@@ -69,6 +69,14 @@ def visualize_result(img, pred, index=None):
     plt.show()
 
 
+def get_sky_mask(pred, index=2):
+    if index is not None:
+        pred = pred.copy()
+        pred[pred != index] = -1
+        print(f'{names[index + 1]}:')
+    return pred
+
+
 def test_simple(model):
     total_loss = 0
     toal_count = 0
@@ -79,9 +87,6 @@ def test_simple(model):
     img = resize(img, (input_height, input_width), order=1)
     input_img = torch.from_numpy(np.transpose(img, (2, 0, 1))).contiguous().float()
     input_img = input_img.unsqueeze(0)
-
-
-
 
     pil_to_tensor = torchvision.transforms.Compose([
         torchvision.transforms.ToTensor(),
@@ -100,6 +105,9 @@ def test_simple(model):
     _, pred = torch.max(scores, dim=1)
     pred = pred.cpu()[0].numpy()
 
+    sky_mask = get_sky_mask(pred)
+    print(sky_mask)
+    # index 2 is sky, with no index it plots all classes
     visualize_result(img_original, pred, index=2)
 
     input_images = Variable(input_img.cuda())

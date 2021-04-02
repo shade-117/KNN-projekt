@@ -12,10 +12,10 @@ def open_pfm(path):
         debug = True
 
         # Line 1: PF=>RGB (3 channels), Pf=>Greyscale (1 channel)
-        type = f.readline().decode('ascii')
-        if "PF" in type:
+        pfm_type = f.readline().decode('ascii')
+        if "PF" in pfm_type:
             channels = 3
-        elif "Pf" in type:
+        elif "Pf" in pfm_type:
             channels = 1
         else:
             print("ERROR: Not a valid PFM file", file=sys.stderr)
@@ -28,7 +28,7 @@ def open_pfm(path):
         width, height = re.findall('\d+', line)
         width = int(width)
         height = int(height)
-        if (debug):
+        if debug:
             print("DEBUG: width={0}, height={1}".format(width, height))
 
         # Line 3: +ve number means big endian, negative means little endian
@@ -36,7 +36,7 @@ def open_pfm(path):
         BigEndian = True
         if "-" in line:
             BigEndian = False
-        if (debug):
+        if debug:
             print("DEBUG: BigEndian={0}".format(BigEndian))
 
         # Slurp all binary data
@@ -57,12 +57,12 @@ def open_pfm(path):
 def open_pfm_custom(path):
     with open(path, "rb") as f:
         # Line 1: PF=>RGB (3 channels), Pf=>Greyscale (1 channel)
-        _ = f.readline().decode('ascii')
+        _ = f.readline()
         # Line 2: width height
-        _ = f.readline().decode('ascii')
+        _ = f.readline()
         width, height = 1302, 687
         # Line 3: +ve number means big endian, negative means little endian
-        _ = f.readline().decode('ascii')
+        _ = f.readline()
         BigEndian = False
         # Slurp all binary data
         channels = 1
@@ -79,7 +79,10 @@ def open_pfm_custom(path):
         return img
 
 
-# res = open_pfm("distance_crop.pfm")
-res = open_pfm_custom("data/distance_crop.pfm")
-plt.imshow(res)
-plt.show()
+if __name__ == '__main__':
+    # res = open_pfm("distance_crop.pfm")
+    res = open_pfm_custom("data/distance_crop2.pfm")
+
+    plt.imshow(res)
+    plt.gca().invert_yaxis()
+    plt.show()

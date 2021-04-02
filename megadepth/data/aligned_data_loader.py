@@ -17,7 +17,6 @@ class PairedData(object):
         self.flip = flip
         self.data_loader_iter = iter(self.data_loader)
         self.iter = 0
-    
 
     def __iter__(self):
         self.data_loader_iter = iter(self.data_loader)
@@ -33,12 +32,13 @@ class PairedData(object):
 
 
 class AlignedDataLoader(BaseDataLoader):
-    def __init__(self,_root, _list_dir, _input_height, _input_width, _is_flip, _shuffle):
+    def __init__(self, _root, _list_dir, _input_height, _input_width, _is_flip, _shuffle):
         transform = None
         dataset = ImageFolder(root=_root, \
-                list_dir =_list_dir, input_height = _input_height, input_width = _input_width, transform=transform, is_flip = _is_flip)
+                              list_dir=_list_dir, input_height=_input_height, input_width=_input_width,
+                              transform=transform, is_flip=_is_flip)
 
-        data_loader = torch.utils.data.DataLoader(dataset, batch_size= 16, shuffle= _shuffle, num_workers=int(3))
+        data_loader = torch.utils.data.DataLoader(dataset, batch_size=16, shuffle=_shuffle, num_workers=int(3))
 
         self.dataset = dataset
         flip = False
@@ -54,14 +54,12 @@ class AlignedDataLoader(BaseDataLoader):
         return len(self.dataset)
 
 
-
 class AlignedDataLoader_TEST(BaseDataLoader):
-    def __init__(self,_root, _list_dir, _input_height, _input_width):
-
+    def __init__(self, _root, _list_dir, _input_height, _input_width):
         dataset = ImageFolder_TEST(root=_root, \
-                list_dir =_list_dir, _input_height = _input_height, _input_width = _input_width)
+                                   list_dir=_list_dir, _input_height=_input_height, _input_width=_input_width)
 
-        data_loader = torch.utils.data.DataLoader(dataset, batch_size= 1, shuffle= False, num_workers=int(3))
+        data_loader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False, num_workers=int(3))
         self.dataset = dataset
         flip = False
         self.paired_data = PairedData(data_loader, flip)
@@ -71,7 +69,6 @@ class AlignedDataLoader_TEST(BaseDataLoader):
 
     def load_data(self):
         return self.paired_data
-
 
     def __len__(self):
         return len(self.dataset)

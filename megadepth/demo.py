@@ -42,7 +42,7 @@ def test_simple(model):
     # you might also use percentile for better visualization
     pred_inv_depth = pred_inv_depth/np.amax(pred_inv_depth)
 
-    io.imsave('demo.png', pred_inv_depth)
+    io.imsave('demo2.png', pred_inv_depth)
     # print(pred_inv_depth.shape)
     sys.exit()
 

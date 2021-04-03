@@ -55,33 +55,36 @@ def open_pfm(path):
 
 
 def open_pfm_custom(path):
+    big_endianness = False
+    width, height = 1302, 687
+    if big_endianness:
+        fmt = ">"
+    else:
+        fmt = "<"
+    fmt = fmt + str(width * height) + "f"
+
     with open(path, "rb") as f:
         # Line 1: PF=>RGB (3 channels), Pf=>Greyscale (1 channel)
         _ = f.readline()
         # Line 2: width height
         _ = f.readline()
-        width, height = 1302, 687
-        # Line 3: +ve number means big endian, negative means little endian
+        # Line 3: positive number means big endian, negative means little endian
         _ = f.readline()
-        BigEndian = False
-        # Slurp all binary data
-        channels = 1
-        samples = width * height * channels
-        buffer = f.read(samples * 4)
-        # Unpack floats with appropriate endianness
-        if BigEndian:
-            fmt = ">"
-        else:
-            fmt = "<"
-        fmt = fmt + str(samples) + "f"
-        img = unpack(fmt, buffer)
-        img = np.reshape(img, newshape=(height, width))
-        return img
+        buffer = f.read(width * height * 4)
+
+    # Unpack floats with appropriate endianness
+    img = unpack(fmt, buffer)
+    img = np.reshape(img, newshape=(height, width))
+    return img
 
 
 if __name__ == '__main__':
-    # res = open_pfm("distance_crop.pfm")
     res = open_pfm_custom("data/distance_crop2.pfm")
+
+    """ Simpler way - used in dataset loading"""
+    # import imageio
+    # imageio.plugins.freeimage.download()  # download Freelibs for reading PFM files
+    # img = imageio.imread('data/distance_crop2.pfm', 'pfm')
 
     plt.imshow(res)
     plt.gca().invert_yaxis()

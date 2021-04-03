@@ -9,11 +9,15 @@ import torch.utils.data as data
 import pickle
 import numpy as np
 import torch
-import os, os.path
-import math, random
+import os
+import os.path
+import math
+import random
 import sys
 from skimage.transform import resize
 from skimage import io
+
+IMG_EXTENSIONS = []
 
 
 def make_dataset(list_dir):
@@ -39,8 +43,7 @@ class ImageFolder(data.Dataset):
         img_list, targets_list = make_dataset(list_dir)
         if len(img_list) == 0:
             raise (RuntimeError("Found 0 images in: " + root + "\n"
-                                                               "Supported image extensions are: " + ",".join(
-                IMG_EXTENSIONS)))
+                                "Supported image extensions are: " + ",".join(IMG_EXTENSIONS)))
         # img_list_1, img_list_2 = selfshuffle_dataset(img_list)
         self.root = root
         self.list_dir = list_dir
@@ -73,6 +76,7 @@ class ImageFolder(data.Dataset):
         else:
             color_rgb = MD_img.copy()
 
+        # todo zeptat se Čadíka, proč toto dělají
         if np.sum(gt > 1e-8) > 10:
             gt[gt > np.percentile(gt[gt > 1e-8], 98)] = 0
             gt[gt < np.percentile(gt[gt > 1e-8], 1)] = 0
@@ -128,8 +132,7 @@ class ImageFolder_TEST(data.Dataset):
         img_list, targets_list = make_dataset(list_dir)
         if len(img_list) == 0:
             raise (RuntimeError("Found 0 images in: " + root + "\n"
-                                                               "Supported image extensions are: " + ",".join(
-                IMG_EXTENSIONS)))
+                                "Supported image extensions are: " + ",".join(IMG_EXTENSIONS)))
         self.root = root
         self.list_dir = list_dir
         self.img_list = img_list

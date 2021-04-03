@@ -1,9 +1,6 @@
-import torch
 import sys
-
-import torchvision
-from torch.autograd import Variable
-import numpy as np
+import os
+import csv
 from options.train_options import TrainOptions
 
 opt = TrainOptions().parse()  # set CUDA_VISIBLE_DEVICES before import torch
@@ -11,8 +8,16 @@ from data.data_loader import CreateDataLoader
 from models.models import create_model
 from skimage import io
 from skimage.transform import resize
+import numpy
+import numpy as np
+import PIL.Image
+import scipy.io
 import matplotlib.pylab as plt
-import os, csv, torch, numpy, scipy.io, PIL.Image, torchvision.transforms
+import torch
+import torchvision
+import torchvision.transforms
+from torch.autograd import Variable
+
 # Our libs
 from megadepth.models.semseg.models import ModelBuilder, SegmentationModule
 from megadepth.models.semseg.utils import colorEncode
@@ -36,15 +41,17 @@ with open('data/object150_info.csv') as f:
     # todo download weights: http://sceneparsing.csail.mit.edu/model/pytorch/ade20k-resnet50dilated-ppm_deepsup/encoder_epoch_20.pth
     # todo  and http://sceneparsing.csail.mit.edu/model/pytorch/ade20k-resnet50dilated-ppm_deepsup/decoder_epoch_20.pth
     # todo and put them into megadepth/checkpoints/semseg/ade20k-resnet50dilated-ppm_deepsup
+    path = 'checkpoints/semseg/ade20k-resnet50dilated-ppm_deepsup'
+
 net_encoder = ModelBuilder.build_encoder(
     arch='resnet50dilated',
     fc_dim=2048,
-    weights='checkpoints/semseg/ade20k-resnet50dilated-ppm_deepsup/encoder_epoch_20.pth')
+    weights=path + '/encoder_epoch_20.pth')
 net_decoder = ModelBuilder.build_decoder(
     arch='ppm_deepsup',
     fc_dim=2048,
     num_class=150,
-    weights='checkpoints/semseg/ade20k-resnet50dilated-ppm_deepsup/decoder_epoch_20.pth',
+    weights=path + '/decoder_epoch_20.pth',
     use_softmax=True)
 
 crit = torch.nn.NLLLoss(ignore_index=-1)
@@ -58,7 +65,7 @@ def visualize_result(img, pred, index=None):
     if index is not None:
         pred = pred.copy()
         pred[pred != index] = -1
-        print(f'{names[index + 1]}:')
+        print('{}:'.format(names[index + 1]))
 
     # colorize prediction
     pred_color = colorEncode(pred, colors).astype(numpy.uint8)

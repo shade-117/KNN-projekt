@@ -2,7 +2,7 @@ import h5py
 import matplotlib.pylab as plt
 import numpy as np
 
-from utils.cfm import open_pfm
+from utils.pfm import open_pfm
 
 
 def open_h5(path):

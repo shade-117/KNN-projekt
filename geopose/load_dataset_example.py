@@ -1,7 +1,3 @@
-import os
-import pathlib
-
-import torch
 import matplotlib as mpl
 mpl.use('module://backend_interagg')  # fix for PyCharm: show plots in SciView (Petr)
 import matplotlib.pyplot as plt
@@ -12,7 +8,7 @@ if __name__ == '__main__':
     # make a symlink to the dataset or put it into main project folder:
     # ln -s {{path/to/file_or_directory}} {{path/to/symlink}}
 
-    ds_dir = '../../geoPose3K_final_publish'
+    ds_dir = '.../datasets/geoPose3K_final_publish/'
 
     dataset.clear_dataset_dir(ds_dir)
 

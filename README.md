@@ -7,3 +7,7 @@
 * [GeoPose3k](http://cphoto.fit.vutbr.cz/geoPose3K/)
 * [megadepth paper](https://www.cs.cornell.edu/projects/megadepth/)
 * [Prezentace - todo]()
+
+### Notes
+(Tomas): potrebujem si to pridat do PYTHONPATH  
+`set PYTHONPATH=%PYTHONPATH%;C:\Users\Tomas\PycharmProjects\KNN-projekt`

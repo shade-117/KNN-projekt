@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
-from . import resnet, resnext, mobilenet, hrnet
-from megadepth.models.semseg.lib.nn import SynchronizedBatchNorm2d
+from semseg.models import hrnet, resnext, resnet, mobilenet
+from semseg.lib.nn import SynchronizedBatchNorm2d
 BatchNorm2d = SynchronizedBatchNorm2d
 
 

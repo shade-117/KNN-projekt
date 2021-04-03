@@ -1,10 +1,7 @@
-import sys
-import os
 import csv
 from options.train_options import TrainOptions
 
 opt = TrainOptions().parse()  # set CUDA_VISIBLE_DEVICES before import torch
-from data.data_loader import CreateDataLoader
 from models.models import create_model
 from skimage import io
 from skimage.transform import resize
@@ -19,8 +16,8 @@ import torchvision.transforms
 from torch.autograd import Variable
 
 # Our libs
-from megadepth.models.semseg.models import ModelBuilder, SegmentationModule
-from megadepth.models.semseg.utils import colorEncode
+from semseg.models.models import ModelBuilder, SegmentationModule
+from semseg.utils import colorEncode
 
 img_path = 'image.jpg'
 
@@ -29,9 +26,9 @@ model = create_model(opt)
 input_height = 384
 input_width = 512
 
-colors = scipy.io.loadmat('data/color150.mat')['colors']
+colors = scipy.io.loadmat('../semseg/data/color150.mat')['colors']
 names = {}
-with open('data/object150_info.csv') as f:
+with open('../semseg/data/object150_info.csv') as f:
     reader = csv.reader(f)
     next(reader)
     for row in reader:
@@ -40,8 +37,8 @@ with open('data/object150_info.csv') as f:
     # Network Builders
     # todo download weights: http://sceneparsing.csail.mit.edu/model/pytorch/ade20k-resnet50dilated-ppm_deepsup/encoder_epoch_20.pth
     # todo  and http://sceneparsing.csail.mit.edu/model/pytorch/ade20k-resnet50dilated-ppm_deepsup/decoder_epoch_20.pth
-    # todo and put them into megadepth/checkpoints/semseg/ade20k-resnet50dilated-ppm_deepsup
-    path = 'checkpoints/semseg/ade20k-resnet50dilated-ppm_deepsup'
+    # todo and put them into semseg/checkpoints/ade20k-resnet50dilated-ppm_deepsup
+    path = '../semseg/checkpoints/ade20k-resnet50dilated-ppm_deepsup'
 
 net_encoder = ModelBuilder.build_encoder(
     arch='resnet50dilated',
@@ -102,8 +99,10 @@ def test_simple(model):
             std=[0.229, 0.224, 0.225])  # across a large photo dataset.
     ])
 
-    pil_image = PIL.Image.open('image.jpg').convert('RGB')
+    pil_image = PIL.Image.open('photo.jpeg').convert('RGB')
     img_original = numpy.array(pil_image)
+    print(img_original)
+    print(img_original.shape)
     img_data = pil_to_tensor(pil_image)
     singleton_batch = {'img_data': img_data[None].cuda()}
     output_size = img_data.shape[1:]
@@ -135,8 +134,7 @@ def test_simple(model):
     plt.show()
 
     io.imsave('image2.png', pred_inv_depth)
-    # print(pred_inv_depth.shape)
-
+    print(pred_inv_depth.shape)
 
 test_simple(model)
 print("We are done")

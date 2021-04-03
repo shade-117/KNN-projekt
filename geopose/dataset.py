@@ -14,7 +14,7 @@ imageio.plugins.freeimage.download()  # download Freelibs for reading PFM files
 
 class GeoPoseDataset(torch.utils.data.Dataset):
     # self.camera_csv = None
-    def __init__(self, data_dir='../geoPose3K_final_publish/'):
+    def __init__(self, data_dir='../datasets/geoPose3K_final_publish/'):
         super(GeoPoseDataset).__init__()
         # self.dir = data_dir
         # self.transform = transform

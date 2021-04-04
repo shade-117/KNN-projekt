@@ -1,3 +1,5 @@
+import sys
+
 from megadepth.models.models import create_model
 import scipy.io
 import numpy as np
@@ -15,6 +17,7 @@ import matplotlib.pyplot as plt
 from skimage.transform import resize
 import torchvision.transforms
 from torch.autograd import Variable
+import time
 
 from utils.process_images import get_sky_mask, transform_image_for_megadepth, megadepth_predict, \
     transform_image_for_semseg, semseg_predict, apply_sky_mask
@@ -59,19 +62,12 @@ if __name__ == '__main__':
     # todo input size for megadepth
     input_height = 384
     input_width = 512
-    ds_dir = './datasets/geoPose3K_final_publish_500mb_part/'
+    ds_dir = './datasets/geoPose3K_final_publish/'
     dataset.clear_dataset_dir(ds_dir)
     ds = dataset.GeoPoseDataset(data_dir=ds_dir)
 
     for i, sample in enumerate(ds):
-        # sample = next(iter(ds))
-
-        # f, ax = plt.subplots(1, 3)
-        # ax[0].imshow(sample['img'])
-        # ax[1].imshow(sample['depth1'])
-        # ax[2].imshow(sample['depth2'])
-        # f.show()
-
+        start = time.time()
         input_image = sample['img']
         megadepth_input = transform_image_for_megadepth(input_image, input_height, input_width)
         megadepth_pred = megadepth_predict(megadepth_model, megadepth_input)
@@ -95,20 +91,30 @@ if __name__ == '__main__':
         # plt.imshow(no_sky_image)
         # plt.colorbar()
         # plt.show()
+
+        # todo show 4 subplots: original image, GT, depth map, depth map no sky
         # fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(nrows=2, ncols=2)
         # ax1.imshow(sample['img'])
         # ax2.imshow(sample['depth1'])
         # ax3.imshow(megadepth_pred_backup)
         # ax4.imshow(megadepth_pred)
         # fig.show()
+        # plt.show()
+        # todo save some figures
         # fig.savefig('./figs/' + str(i) + '.png', dpi=110)
         # if i == 50:
         #     break
 
+        # todo save predicted depths as .npy
         dir_path = os.path.dirname(os.path.realpath(sample['path']))
         # print(dir_path)
         np.save(dir_path + '/depth_map', megadepth_pred_backup)
         np.save(dir_path + '/depth_map_no_sky', megadepth_pred)
-        print(f'{i} / {len(ds)}')
-        break
+        end = time.time()
+        took = end - start
+        # print(dir_path)
+        print(f'{i}/{len(ds)}, last one took: {took:.3f}s', sep=' ', end='\r', flush=True)
+        sys.stdout.flush()
+        # if i == 10:
+        #     break
 

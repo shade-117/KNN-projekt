@@ -22,24 +22,21 @@ class GeoPoseDataset(torch.utils.data.Dataset):
             'Dataset could not find dir "{}"'.format(data_dir)
 
         self.img_paths = []
-        self.depth_paths1 = []
-        self.depth_paths2 = []
+        self.depth_paths = []
 
         for curr_dir in os.listdir(data_dir):
             img_path = os.path.join(data_dir, curr_dir, 'photo.jpeg')
-            depth1_path = os.path.join(data_dir, curr_dir, 'cyl_distance_crop.pfm.gz')
-            depth2_path = os.path.join(data_dir, curr_dir, 'pinhole_distance_crop.pfm.gz')
+            # depth1_path = os.path.join(data_dir, curr_dir, 'cyl_distance_crop.pfm.gz')
+            depth_path = os.path.join(data_dir, curr_dir, 'pinhole_distance_crop.pfm.gz')
 
             if not (os.path.isfile(img_path) and
-                    os.path.isfile(depth1_path) and
-                    os.path.isfile(depth2_path)):
+                    os.path.isfile(depth_path)):
                 continue
 
             self.img_paths.append(img_path)
-            self.depth_paths1.append(depth1_path)
-            self.depth_paths2.append(depth2_path)
+            self.depth_paths.append(depth_path)
 
-        if len(self.img_paths) != len(self.depth_paths1):
+        if len(self.img_paths) != len(self.depth_paths):
             print("image and depth lists length does not match {} x {}"
                   .format(len(self.img_paths), len(self.depth_paths)))
 
@@ -52,17 +49,13 @@ class GeoPoseDataset(torch.utils.data.Dataset):
         if isinstance(idx, Iterable):
             return (self.__getitem__(i) for i in idx)
 
-        with gzip.open(self.depth_paths1[idx], 'r') as depth_archive:
-            depth_img1 = np.flipud(imageio.imread(depth_archive.read(), 'pfm'))
-
-        with gzip.open(self.depth_paths2[idx], 'r') as depth_archive:
-            depth_img2 = np.flipud(imageio.imread(depth_archive.read(), 'pfm'))
+        with gzip.open(self.depth_paths[idx], 'r') as depth_archive:
+            depth_img = np.flipud(imageio.imread(depth_archive.read(), 'pfm'))
 
         base_img = imageio.imread(self.img_paths[idx], 'jpeg')
 
         sample = {
-            'depth1': depth_img1,
-            'depth2': depth_img2,
+            'depth': depth_img,
             'img': base_img,
             'path': self.img_paths[idx]
         }
@@ -71,7 +64,6 @@ class GeoPoseDataset(torch.utils.data.Dataset):
 
     def __iter__(self):
         for i in range(len(self)):
-            print(i)
             yield self[i]
 
 
@@ -98,10 +90,7 @@ def clear_dataset_dir(dataset_dir):
             if not os.path.isdir(curr):
                 continue
 
-            cyl = curr + os.sep + 'cyl' + os.sep + depth_gz  # first depth file
             pin = curr + os.sep + 'pinhole' + os.sep + depth_gz  # second depth file
-            if os.path.exists(cyl):
-                shutil.move(cyl, os.path.join(curr, 'cyl_' + depth_gz))
             if os.path.exists(pin):
                 shutil.move(pin, os.path.join(curr, 'pinhole_' + depth_gz))
 
@@ -110,7 +99,6 @@ def clear_dataset_dir(dataset_dir):
                 os.rename(photo + '.jpg', photo + '.jpeg')
 
             to_remove = os.listdir(curr)
-            to_remove.remove('cyl_' + depth_gz)
             to_remove.remove('pinhole_' + depth_gz)
             to_remove.remove('photo.jpeg')
             try:

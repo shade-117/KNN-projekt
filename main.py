@@ -18,27 +18,28 @@ from utils.semseg import visualize_result
 
 
 def load_models():
-    opt = TrainOptions().parse()  # set CUDA_VISIBLE_DEVICES before import torch
+    megadepth_checkpoints_path = './megadepth/checkpoints/'
+    opt = TrainOptions().parse(megadepth_checkpoints_path)
     model = create_model(opt)
     # input_height = 384
     # input_width = 512
-    # model.switch_to_eval()
+    model.switch_to_eval()
 
     # Network Builders
     # todo download weights: http://sceneparsing.csail.mit.edu/model/pytorch/ade20k-resnet50dilated-ppm_deepsup/encoder_epoch_20.pth
     # todo  and http://sceneparsing.csail.mit.edu/model/pytorch/ade20k-resnet50dilated-ppm_deepsup/decoder_epoch_20.pth
     # todo and put them into semseg/checkpoints/ade20k-resnet50dilated-ppm_deepsup
-    path = './semseg/checkpoints/ade20k-resnet50dilated-ppm_deepsup'
+    semseg_checkpoints_path = './semseg/checkpoints/ade20k-resnet50dilated-ppm_deepsup'
 
     net_encoder = ModelBuilder.build_encoder(
         arch='resnet50dilated',
         fc_dim=2048,
-        weights=path + '/encoder_epoch_20.pth')
+        weights=semseg_checkpoints_path + '/encoder_epoch_20.pth')
     net_decoder = ModelBuilder.build_decoder(
         arch='ppm_deepsup',
         fc_dim=2048,
         num_class=150,
-        weights=path + '/decoder_epoch_20.pth',
+        weights=semseg_checkpoints_path + '/decoder_epoch_20.pth',
         use_softmax=True)
 
     crit = torch.nn.NLLLoss(ignore_index=-1)
@@ -67,6 +68,7 @@ if __name__ == '__main__':
     # todo input size for megadepth
     input_height = 384
     input_width = 512
+
 
     input_image = sample['img']
     # todo transform images for megadepth

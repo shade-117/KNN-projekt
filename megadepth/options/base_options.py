@@ -7,7 +7,7 @@ class BaseOptions():
         self.parser = argparse.ArgumentParser()
         self.initialized = False
 
-    def initialize(self):
+    def initialize(self, checkpoints_path):
         # self.parser.add_argument('--dataroot', required=True, help='path to images (should have subfolders trainA, trainB, valA, valB, etc)')
         self.parser.add_argument('--batchSize', type=int, default=1, help='input batch size')
         self.parser.add_argument('--loadSize', type=int, default=286, help='scale images to this size')
@@ -27,7 +27,8 @@ class BaseOptions():
                                  help='chooses which model to use. cycle_gan, one_direction_test, pix2pix, ...')
         # self.parser.add_argument('--which_direction', type=str, default='AtoB', help='AtoB or BtoA')
         self.parser.add_argument('--nThreads', default=2, type=int, help='# threads for loading data')
-        self.parser.add_argument('--checkpoints_dir', type=str, default='./megadepth/checkpoints/', help='models are saved here')
+        # self.parser.add_argument('--checkpoints_dir', type=str, default='./megadepth/checkpoints/', help='models are saved here')
+        self.parser.add_argument('--checkpoints_dir', type=str, default=checkpoints_path, help='models are saved here')
         self.parser.add_argument('--norm', type=str, default='instance', help='instance normalization or batch normalization')
         self.parser.add_argument('--serial_batches', action='store_true', help='if true, takes images in order to make batches, otherwise takes them randomly')
         self.parser.add_argument('--display_winsize', type=int, default=256,  help='display window size')
@@ -38,9 +39,9 @@ class BaseOptions():
 
         self.initialized = True
 
-    def parse(self):
+    def parse(self, checkpoints_path):
         if not self.initialized:
-            self.initialize()
+            self.initialize(checkpoints_path)
         self.opt = self.parser.parse_args()
         self.opt.isTrain = self.isTrain   # train or test
 

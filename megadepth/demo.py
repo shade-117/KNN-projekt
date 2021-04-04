@@ -1,7 +1,6 @@
 import csv
 from options.train_options import TrainOptions
 
-opt = TrainOptions().parse()  # set CUDA_VISIBLE_DEVICES before import torch
 from models.models import create_model
 from skimage import io
 from skimage.transform import resize
@@ -20,7 +19,8 @@ from semseg.models.models import ModelBuilder, SegmentationModule
 from semseg.utils import colorEncode
 
 img_path = 'image.jpg'
-
+megadepth_checkpoints_path = './checkpoints/'
+opt = TrainOptions().parse(megadepth_checkpoints_path)  # set CUDA_VISIBLE_DEVICES before import torch
 model = create_model(opt)
 
 input_height = 384

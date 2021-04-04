@@ -63,7 +63,8 @@ class GeoPoseDataset(torch.utils.data.Dataset):
         sample = {
             'depth1': depth_img1,
             'depth2': depth_img2,
-            'img': base_img
+            'img': base_img,
+            'path': self.img_paths[idx]
         }
 
         return sample
@@ -112,6 +113,12 @@ def clear_dataset_dir(dataset_dir):
             to_remove.remove('cyl_' + depth_gz)
             to_remove.remove('pinhole_' + depth_gz)
             to_remove.remove('photo.jpeg')
+            try:
+                to_remove.remove('depth_map_no_sky.npy')
+                to_remove.remove('depth_map.npy')
+            except ValueError:
+                # they were not generated
+                ...
 
             for r in to_remove:
                 r_full = curr + os.sep + r

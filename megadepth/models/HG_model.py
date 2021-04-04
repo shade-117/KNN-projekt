@@ -17,10 +17,10 @@ class HGModel(BaseModel):
         print(
             "===========================================LOADING Hourglass NETWORK====================================================")
         model = pytorch_DIW_scratch.pytorch_DIW_scratch
-        model= torch.nn.parallel.DataParallel(model, device_ids = [0])
+        model = torch.nn.parallel.DataParallel(model, device_ids=[0])
         model_parameters = self.load_network(model, 'G', 'best_generalization')
         model.load_state_dict(model_parameters)
-        self.netG = model.cuda()
+        self.netG = model.cuda(0)
 
     def batch_classify(self, z_A_arr, z_B_arr, ground_truth):
         threashold = 1.1
@@ -36,7 +36,7 @@ class HGModel(BaseModel):
         diff = estimated_labels - ground_truth
         diff[diff != 0] = 1
 
-        # error 
+        # error
         inequal_error_count = diff[ground_truth != 0]
         inequal_error_count = torch.sum(inequal_error_count)
 
@@ -58,7 +58,7 @@ class HGModel(BaseModel):
         return error_list, count_list
 
     def computeSDR(self, prediction_d, targets):
-        #  for each image 
+        #  for each image
         total_error = [0, 0, 0]
         total_samples = [0, 0, 0]
 

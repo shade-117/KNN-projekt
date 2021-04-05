@@ -7,7 +7,7 @@ import random
 ds_dir = './datasets/geoPose3K_final_publish/'
 dataset.clear_dataset_dir(ds_dir)
 ds = dataset.GeoPoseDataset(data_dir=ds_dir)
-nums = random.sample(range(0, len(ds)), 50)
+nums = random.sample(range(0, len(ds)), 2)
 for i in nums:
     print(i)
     sample = ds[i]
@@ -17,9 +17,9 @@ for i in nums:
     megadepth_pred_no_sky = np.load(os.path.join(dir_path, 'depth_map_no_sky.npy'))
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(nrows=2, ncols=2)
     ax1.imshow(sample['img'])
-    ax2.imshow(sample['depth'])
+    ax2.imshow(np.log(sample['depth'] + 2))
     ax3.imshow(megadepth_pred)
-    ax4.imshow(megadepth_pred_no_sky)
+    ax4.imshow(np.log(megadepth_pred_no_sky + 2))
     fig.show()
     plt.show()
     # fig.savefig('./figs/' + str(i) + '.png', dpi=110)

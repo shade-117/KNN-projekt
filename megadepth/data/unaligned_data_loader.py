@@ -1,13 +1,18 @@
 import random
 import torch.utils.data
 import torchvision.transforms as transforms
-from data.base_data_loader import BaseDataLoader
-from data.image_folder import ImageFolder
+try:
+    from data.base_data_loader import BaseDataLoader
+    from data.image_folder import ImageFolder
+except ImportError:
+    from base_data_loader import BaseDataLoader
+    from image_folder import ImageFolder
+
 # pip install future --upgrade
-from builtins import object
 from pdb import set_trace as st
 
-class PairedData(object):
+
+class PairedData:
     def __init__(self, data_loader_A, data_loader_B, max_dataset_size, flip):
         self.data_loader_A = data_loader_A
         self.data_loader_B = data_loader_B
@@ -21,7 +26,7 @@ class PairedData(object):
         self.stop_B = False
         self.data_loader_A_iter = iter(self.data_loader_A)
         self.data_loader_B_iter = iter(self.data_loader_B)
-        self.iter = 0
+        self.iter_ = 0  # avoid name collision
         return self
 
     def __next__(self):
@@ -43,12 +48,12 @@ class PairedData(object):
                 self.data_loader_B_iter = iter(self.data_loader_B)
                 B, B_paths = next(self.data_loader_B_iter)
 
-        if (self.stop_A and self.stop_B) or self.iter > self.max_dataset_size:
+        if (self.stop_A and self.stop_B) or self.iter_ > self.max_dataset_size:
             self.stop_A = False
             self.stop_B = False
             raise StopIteration()
         else:
-            self.iter += 1
+            self.iter_ += 1
             if self.flip and random.random() < 0.5:
                 idx = [i for i in range(A.size(3) - 1, -1, -1)]
                 idx = torch.LongTensor(idx)
@@ -56,6 +61,7 @@ class PairedData(object):
                 B = B.index_select(3, idx)
             return {'A': A, 'A_paths': A_paths,
                     'B': B, 'B_paths': B_paths}
+
 
 class UnalignedDataLoader(BaseDataLoader):
     def initialize(self, opt):
@@ -87,7 +93,7 @@ class UnalignedDataLoader(BaseDataLoader):
         self.dataset_A = dataset_A
         self.dataset_B = dataset_B
         flip = opt.isTrain and not opt.no_flip
-        self.paired_data = PairedData(data_loader_A, data_loader_B, 
+        self.paired_data = PairedData(data_loader_A, data_loader_B,
                                       self.opt.max_dataset_size, flip)
 
     def name(self):

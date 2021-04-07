@@ -2,6 +2,7 @@ import argparse
 import os
 from megadepth.util import util
 
+
 class BaseOptions():
     def __init__(self):
         self.parser = argparse.ArgumentParser()
@@ -22,7 +23,7 @@ class BaseOptions():
         self.parser.add_argument('--gpu_ids', type=str, default='0,1', help='gpu ids: e.g. 0  0,1,2, 0,2')
         self.parser.add_argument('--name', type=str, default='test_local', help='name of the experiment. It decides where to store samples and models')
         # self.parser.add_argument('--align_data', action='store_true',
-                                # help='if True, the datasets are loaded from "test" and "train" directories and the data pairs are aligned')
+        # help='if True, the datasets are loaded from "test" and "train" directories and the data pairs are aligned')
         self.parser.add_argument('--model', type=str, default='pix2pix',
                                  help='chooses which model to use. cycle_gan, one_direction_test, pix2pix, ...')
         # self.parser.add_argument('--which_direction', type=str, default='AtoB', help='AtoB or BtoA')
@@ -39,7 +40,7 @@ class BaseOptions():
 
         self.initialized = True
 
-    def parse(self, checkpoints_path):
+    def parse(self, checkpoints_path=''):  # added ='' to suppress warning -- check if OK
         if not self.initialized:
             self.initialize(checkpoints_path)
         self.opt = self.parser.parse_args()

@@ -1,4 +1,8 @@
-class BaseDataLoader():
+from abc import ABC, abstractmethod
+
+
+class BaseDataLoader(ABC):
+    @abstractmethod
     def __init__(self):
         pass
 
@@ -6,5 +10,5 @@ class BaseDataLoader():
     #     # self.opt = opt
     #     pass
 
-    def load_data():
+    def load_data(self):
         return None

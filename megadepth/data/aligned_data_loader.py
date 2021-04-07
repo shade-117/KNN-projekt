@@ -1,15 +1,19 @@
 import random
 import numpy as np
 import torch.utils.data
-from data.base_data_loader import BaseDataLoader
-from data.image_folder import ImageFolder
-from data.image_folder import ImageFolder_TEST
+try:
+    from data.base_data_loader import BaseDataLoader
+    from data.image_folder import ImageFolder
+    from data.image_folder import ImageFolder_TEST
+except ImportError:
+    from base_data_loader import BaseDataLoader
+    from image_folder import ImageFolder, ImageFolder_TEST
 from builtins import object
 import sys
 import h5py
 
 
-class PairedData(object):
+class PairedData:
     def __init__(self, data_loader, flip):
         self.data_loader = data_loader
         # self.fineSize = fineSize
@@ -33,8 +37,9 @@ class PairedData(object):
 
 class AlignedDataLoader(BaseDataLoader):
     def __init__(self, _root, _list_dir, _input_height, _input_width, _is_flip, _shuffle):
+        # super is an abstract class, no need to call its super
         transform = None
-        dataset = ImageFolder(root=_root, \
+        dataset = ImageFolder(root=_root,
                               list_dir=_list_dir, input_height=_input_height, input_width=_input_width,
                               transform=transform, is_flip=_is_flip)
 
@@ -56,7 +61,7 @@ class AlignedDataLoader(BaseDataLoader):
 
 class AlignedDataLoader_TEST(BaseDataLoader):
     def __init__(self, _root, _list_dir, _input_height, _input_width):
-        dataset = ImageFolder_TEST(root=_root, \
+        dataset = ImageFolder_TEST(root=_root,
                                    list_dir=_list_dir, _input_height=_input_height, _input_width=_input_width)
 
         data_loader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False, num_workers=int(3))

@@ -1,7 +1,7 @@
+# stdlib
 import csv
-from options.train_options import TrainOptions
 
-from models.models import create_model
+# external
 from skimage import io
 from skimage.transform import resize
 import numpy
@@ -14,7 +14,9 @@ import torchvision
 import torchvision.transforms
 from torch.autograd import Variable
 
-# Our libs
+# local
+from options.train_options import TrainOptions
+from models.models import create_model
 from semseg.models.models import ModelBuilder, SegmentationModule
 from semseg.utils import colorEncode
 
@@ -53,7 +55,7 @@ net_decoder = ModelBuilder.build_decoder(
 
 crit = torch.nn.NLLLoss(ignore_index=-1)
 segmentation_module = SegmentationModule(net_encoder, net_decoder, crit)
-segmentation_module.eval()
+segmentation_module.eval()  # set training=False
 segmentation_module.cuda()
 
 
@@ -101,11 +103,12 @@ def test_simple(model):
 
     pil_image = PIL.Image.open('photo.jpeg').convert('RGB')
     img_original = numpy.array(pil_image)
-    print(img_original)
+    # print(img_original)
     print(img_original.shape)
     img_data = pil_to_tensor(pil_image)
     singleton_batch = {'img_data': img_data[None].cuda()}
     output_size = img_data.shape[1:]
+    torch.cuda.empty_cache()
     with torch.no_grad():
         scores = segmentation_module(singleton_batch, segSize=output_size)
     _, pred = torch.max(scores, dim=1)
@@ -135,6 +138,7 @@ def test_simple(model):
 
     io.imsave('image2.png', pred_inv_depth)
     print(pred_inv_depth.shape)
+
 
 test_simple(model)
 print("We are done")

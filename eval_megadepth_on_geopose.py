@@ -64,11 +64,14 @@ if __name__ == '__main__':
     input_width = 512
     ds_dir = './datasets/geoPose3K_final_publish/'
     dataset.clear_dataset_dir(ds_dir)
-    ds = dataset.GeoPoseDataset(data_dir=ds_dir)
+    ds = dataset.GeoPoseDataset(ds_dir=ds_dir)
+
+    # lze iterovat stejně jako přes ds, jen pracuje s batches místo samples
+    loader = torch.utils.data.DataLoader(ds, batch_size=4, num_workers=4, collate_fn=ds.collate)
 
     for i, sample in enumerate(ds):
         start = time.time()
-        input_image = sample['img']
+        input_image, depth_img, dir_path = sample
         megadepth_input = transform_image_for_megadepth(input_image, input_height, input_width)
         megadepth_pred = megadepth_predict(megadepth_model, megadepth_input)
         megadepth_pred_backup = np.copy(megadepth_pred)
@@ -94,8 +97,8 @@ if __name__ == '__main__':
 
         # todo show 4 subplots: original image, GT, depth map, depth map no sky
         # fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(nrows=2, ncols=2)
-        # ax1.imshow(sample['img'])
-        # ax2.imshow(sample['depth1'])
+        # ax1.imshow(input_image)
+        # ax2.imshow(depth_img)
         # ax3.imshow(megadepth_pred_backup)
         # ax4.imshow(megadepth_pred)
         # fig.show()
@@ -106,7 +109,6 @@ if __name__ == '__main__':
         #     break
 
         # todo save predicted depths as .npy
-        dir_path = os.path.dirname(os.path.realpath(sample['path']))
         # print(dir_path)
         np.save(dir_path + '/depth_map', megadepth_pred_backup)
         np.save(dir_path + '/depth_map_no_sky', megadepth_pred)
@@ -117,4 +119,3 @@ if __name__ == '__main__':
         sys.stdout.flush()
         # if i == 10:
         #     break
-

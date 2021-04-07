@@ -1,10 +1,10 @@
 # stlib
-import os
+import contextlib
 import shutil
-import pathlib
 import gzip
 from collections.abc import Iterable
 import os
+import pathlib
 
 # external
 import numpy as np
@@ -14,6 +14,8 @@ import matplotlib.pyplot as plt
 import cv2 as cv
 from skimage.transform import resize
 from torchvision import transforms
+from scipy.ndimage import rotate
+from turbojpeg import TurboJPEG
 
 
 imageio.plugins.freeimage.download()  # download Freelibs for reading PFM files
@@ -22,19 +24,23 @@ imageio.plugins.freeimage.download()  # download Freelibs for reading PFM files
 class GeoPoseDataset(torch.utils.data.Dataset):
     """GeoPose3k as a dataset of dictionaries {path, image, depth}"""
 
-    def __init__(self, data_dir='datasets/geoPose3K_final_publish/', transforms=None, verbose=False):
+    def __init__(self, ds_dir='datasets/geoPose3K_final_publish/', transforms=None, verbose=False):
         super(GeoPoseDataset).__init__()
-        assert os.path.isdir(data_dir), \
-            'Dataset could not find dir "{}"'.format(data_dir)
+        assert os.path.isdir(ds_dir), \
+            'Dataset could not find dir "{}"'.format(ds_dir)
 
         self.verbose = verbose
         self.img_paths = []
         self.depth_paths = []
         self.transforms = None
+        self.jpeg_reader = TurboJPEG()
 
-        for curr_dir in os.listdir(data_dir):
-            img_path = os.path.join(data_dir, curr_dir, 'photo.jpeg')
-            depth_path = os.path.join(data_dir, curr_dir, 'pinhole_distance_crop.pfm.gz')
+        # list only directories, sorting not really necessary
+        listed_data_dir = [d for d in sorted(os.listdir(ds_dir)) if os.path.isdir(os.path.join(ds_dir, d))]
+
+        for curr_dir in listed_data_dir:
+            img_path = os.path.join(ds_dir, curr_dir, 'photo.jpeg')
+            depth_path = os.path.join(ds_dir, curr_dir, 'distance_crop.pfm')
 
             if not (os.path.isfile(img_path) and
                     os.path.isfile(depth_path)):
@@ -65,10 +71,8 @@ class GeoPoseDataset(torch.utils.data.Dataset):
         elif not isinstance(idx, int):
             return TypeError('Invalid index type')
 
-        with gzip.open(self.depth_paths[idx], 'r') as depth_archive:
-            depth_img = depth_archive.read()
-            depth_img = imageio.imread(depth_img, format='pfm')
-            depth_img = np.flipud(np.array(depth_img)).copy()
+        depth_img = imageio.imread(self.depth_paths[idx], format='pfm')
+        depth_img = np.flipud(np.array(depth_img)).copy()
 
         indices = np.argwhere(np.isnan(depth_img))
         mean_depth = np.nanmean(depth_img)
@@ -79,7 +83,13 @@ class GeoPoseDataset(torch.utils.data.Dataset):
         if self.verbose and len(indices) > 0:
             print('NaN x{} in {}'.format(len(indices), self.img_paths[idx]))
 
-        base_img = np.array(imageio.imread(self.img_paths[idx], format='jpeg'))
+        # before: 88ms
+        # base_img = imageio.imread(self.img_paths[idx], format='jpeg')
+
+        with open(self.img_paths[idx], 'rb') as photo_jpeg:
+            # now: 46ms
+            base_img = self.jpeg_reader.decode(photo_jpeg.read(), 0)  # 0 == RGB
+        base_img = np.array(base_img)
 
         if self.transforms is not None:
             base_img = self.transforms(base_img)
@@ -88,11 +98,11 @@ class GeoPoseDataset(torch.utils.data.Dataset):
         # sample = {
         #     'depth': depth_img,
         #     'img': base_img,
+        #     'path': os.path.dirname(self.img_paths[idx])  # unused
         # }
-        # 'path': os.path.dirname(self.img_paths[idx])  # unused
         # return sample
 
-        return base_img, depth_img
+        return base_img, depth_img, os.path.dirname(self.img_paths[idx])
 
     def __iter__(self):
         for i in range(len(self)):
@@ -103,7 +113,7 @@ class GeoPoseDataset(torch.utils.data.Dataset):
         return tuple(zip(*data))
 
 
-def clear_dataset_dir(dataset_dir, resize_dim=None):
+def clear_dataset_dir(ds_dir, resize_dim=None):
     """
     Remove unnecessary files from dataset
     Rename ground-truth photo names to jpeg
@@ -114,69 +124,80 @@ def clear_dataset_dir(dataset_dir, resize_dim=None):
 
     old_cwd = os.getcwd()
     try:
-        print('clearing dataset directory')
 
-        assert os.path.isdir(dataset_dir), \
+        assert os.path.isdir(ds_dir), \
             "Invalid directory for clearing dataset"
 
-        os.chdir(dataset_dir)
+        print('clearing dataset directory started')
 
-        depth_gz = 'distance_crop.pfm.gz'
+        os.chdir(ds_dir)
+
+        is_cleared_file = 'is_cleared.txt'
+
+        if os.path.isfile(is_cleared_file):
+            print('dataset directory has already been cleared, skipping')
+            return
+
+        depth_pfm = 'distance_crop.pfm'  # depth ground-truth
+        mask_png = 'labels_crop.png'  # image segmentation ground-truth
 
         for curr in os.listdir():
             if not os.path.isdir(curr):
                 continue
 
-            # depth
-            pin = curr + os.sep + 'pinhole' + os.sep + depth_gz  # second depth file
-            if os.path.exists(pin):
-                shutil.move(pin, os.path.join(curr, 'pinhole_' + depth_gz))
+            # depth map
+            pin_path = os.path.join(curr, 'pinhole', depth_pfm + '.gz')  # second depth file
+            if os.path.exists(pin_path):
+                shutil.move(pin_path, os.path.join(curr, 'pinhole_' + depth_pfm + '.gz'))
+
+            # unzip archive
+            pin_path = os.path.join(curr, 'pinhole_' + depth_pfm + '.gz')
+            if os.path.isfile(pin_path):
+                with gzip.open(pin_path, 'rb') as depth_archive:
+                    with open(os.path.join(curr, depth_pfm), 'wb') as depth_archive_content:
+                        shutil.copyfileobj(depth_archive, depth_archive_content)
 
             # base image
-            photo = curr + os.sep + 'photo'
-            if os.path.exists(photo + '.jpg'):
-                os.rename(photo + '.jpg', photo + '.jpeg')
+            photo_path = os.path.join(curr, 'photo')
+            if os.path.exists(photo_path + '.jpg'):
+                os.rename(photo_path + '.jpg', photo_path + '.jpeg')
 
-
-            """
-            # Unused
-            base_img = imageio.imread(photo + '.jpeg', format='jpeg')
-            # cropping (optional)
-            if resize_dim is not None:
-                r = resize_dim // 2
-                img_center = base_img.shape[0] // 2, base_img.shape[1] // 2
-
-                assert min(img_center) >= r
-
-                cropped_img = base_img[img_center[0] - r: img_center[0] + r,
-                                       img_center[1] - r: img_center[1] + r]
-
-                cropped_path = photo + '_crop.jpeg'
-                # if not os.path.isfile(cropped_path):
-                imageio.imwrite(cropped_path, cropped_img, format='jpeg')
-            """
+            # segmentation map
+            seg_path = os.path.join(curr, 'pinhole', mask_png)
+            if os.path.exists(seg_path):
+                shutil.move(seg_path, os.path.join(curr, 'pinhole_' + mask_png))
 
             to_remove = os.listdir(curr)
 
             # Remove everything except for:
-            to_remove.remove('pinhole_' + depth_gz)
-            to_remove.remove('photo.jpeg')
-            to_remove.remove('into.txt')
-            try:
-                to_remove.remove('depth_map_no_sky.npy')
-                to_remove.remove('depth_map.npy')
-            except ValueError:
-                # they were not generated
-                ...
+            do_not_remove = [depth_pfm,
+                             'pinhole_' + mask_png,
+                             'photo.jpeg',
+                             'photo.jpeg',
+                             'info.txt',
+                             'depth_map_no_sky.npy',
+                             'depth_map.npy']
+
+            for file in do_not_remove:
+                with contextlib.suppress(ValueError):
+                    to_remove.remove(file)
 
             for r in to_remove:
-                r_full = curr + os.sep + r
+                r_full = os.path.join(curr, r)
                 if os.path.isdir(r_full):
                     shutil.rmtree(r_full)
                 else:
                     os.remove(r_full)
+
+        # log that dataset has been cleared
+        with open(is_cleared_file, 'w+') as f:
+            f.write('True')
+
+    except Exception as ex:
+        print(ex)
     finally:
         os.chdir(old_cwd)
+    print('clearing dataset directory finished')
 
 
 def copy_images_out(ds_dir='datasets/geoPose3K_final_publish/', dir_to='../geoPose3K_photos_merged/'):
@@ -189,11 +210,13 @@ def copy_images_out(ds_dir='datasets/geoPose3K_final_publish/', dir_to='../geoPo
             if not os.path.isdir(curr):
                 continue
 
-            photo = curr + os.sep + 'photo'
+            photo = os.path.join(curr, 'photo')
             if os.path.exists(photo + '.jpg'):
                 os.rename(photo + '.jpg', photo + '.jpeg')
 
             shutil.copy(photo + '.jpeg', f'../photos/{curr}.jpeg')
+    except Exception as ex:
+        print(ex)
     finally:
         os.chdir(old_cwd)
 
@@ -222,35 +245,46 @@ def rotate_images(ds_dir='datasets/geoPose3K_final_publish/', show_cv=False, sho
 
         os.chdir(ds_dir)
 
+        is_rotated_file = 'is_rotated.txt'
+
+        if os.path.isfile(is_rotated_file):
+            print('dataset rotations have already been fixed, skipping')
+            return
+
         if show_cv:
             cv.namedWindow('a')
 
         for curr in os.listdir():
             if not os.path.isdir(curr):
                 continue
-            photo = curr + os.sep + 'photo.jpeg'
+            photo = os.path.join(curr, 'photo.jpeg')
 
             if curr in rotations:
-                img = imageio.imread(photo)
-
+                img = imageio.imread(photo, format='jpeg')
                 rot_param = rotations[curr] // 90
+                img_rot = rotate(img, rotations[curr])
+                imageio.imwrite(photo, img_rot, format='jpeg')
 
                 if show_plt:
                     f, ax = plt.subplots(1, 2)
                     ax[0].imshow(img)
-                    ax[1].imshow(np.rot90(img, k=rot_param))
+                    ax[1].imshow(img_rot)
                     plt.title('{}\n{}'.format(rot_param, curr))
                     plt.show()
 
                 if show_cv:  # unused - show images (square-croped) orig and rotated
                     smaller_axis = min(img.shape[0], img.shape[1])
                     img = img[:smaller_axis, :smaller_axis]
-                    cv.imshow('a', np.hstack([img, np.rot90(img, k=rot_param)]))
+                    cv.imshow('a', np.hstack([img, img_rot]))
                     cv.waitKey(0)
-
-                imageio.imwrite(photo, np.rot90(img, k=rot_param), format='jpeg')
 
         if show_cv:
             cv.destroyAllWindows()  # unused
+
+        with open(is_rotated_file, 'w+') as f:
+            f.write('True')
+
+    except Exception as ex:
+        print(ex)
     finally:
         os.chdir(old_cwd)

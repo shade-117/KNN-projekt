@@ -9,13 +9,12 @@ input_height = 384
 input_width = 512
 ds_dir = './datasets/geoPose3K_final_publish/'
 # dataset.clear_dataset_dir(ds_dir)
-ds = dataset.GeoPoseDataset(data_dir=ds_dir)
+ds = dataset.GeoPoseDataset(ds_dir=ds_dir)
 
 for d in ds:
     # d = ds[2511]
-    gt = d['depth']
-    gt_resized = np.float32(resize(gt, (input_height, input_width), preserve_range=True))
-    dir_path = os.path.dirname(os.path.realpath(d['path']))
+    input_image, depth_img, dir_path = d
+    gt_resized = np.float32(resize(depth_img, (input_height, input_width), preserve_range=True))
 
     mask = np.isnan(gt_resized)
     gt_resized = np.where(mask, gt_resized[gt_resized > 0].mean(), gt_resized)

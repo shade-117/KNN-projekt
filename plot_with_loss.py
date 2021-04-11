@@ -30,6 +30,7 @@ def rmse_loss(log_prediction_d, log_gt, mask=None, scale_invariant=True):
 
     return data_loss
 
+
 if __name__ == '__main__':
     # working folder 'KNN-projekt' assumed
 
@@ -64,7 +65,7 @@ if __name__ == '__main__':
         # union the sky masks
         mask_gt = np.where(gt == -1, 0, 1)
         mask_pred = np.where(pred == -1, 0, 1)
-        union_mask = torch.Tensor(mask_gt*mask_pred)
+        union_mask = torch.Tensor(mask_gt * mask_pred)
 
         fig, ((ax11, ax12, ax13), (ax21, ax22, ax23)) = plt.subplots(nrows=2, ncols=3, figsize=(12, 7))
         ax11.imshow(img)
@@ -80,7 +81,7 @@ if __name__ == '__main__':
 
         gtc = np.copy(gt)
         gtc[idx] = -1
-        ax21.imshow(mask_gt-mask_pred)
+        ax21.imshow(mask_gt - mask_pred)
         ax22.imshow(gtc)
         ax23.imshow(predc)
         si_loss = rmse_loss(pred_t, gt_t, mask=union_mask, scale_invariant=True)
@@ -102,7 +103,6 @@ if __name__ == '__main__':
 
     print("\ncount: ", count)
     print("\nsi-RMSE: ", si_full_loss)
-    print("si-RMSE/count", si_full_loss/count)
+    print("si-RMSE/count", si_full_loss / count)
     print("\nRMSE: ", nsi_full_loss)
     print("RMSE/count", nsi_full_loss / count)
-

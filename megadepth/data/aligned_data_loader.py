@@ -2,9 +2,9 @@ import random
 import numpy as np
 import torch.utils.data
 try:
-    from data.base_data_loader import BaseDataLoader
-    from data.image_folder import ImageFolder
-    from data.image_folder import ImageFolder_TEST
+    from megadepth.data.base_data_loader import BaseDataLoader
+    from megadepth.data.image_folder import ImageFolder
+    from megadepth.data.image_folder import ImageFolder_TEST
 except ImportError:
     from base_data_loader import BaseDataLoader
     from image_folder import ImageFolder, ImageFolder_TEST

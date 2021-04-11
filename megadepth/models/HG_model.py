@@ -14,8 +14,7 @@ class HGModel(BaseModel):
     def __init__(self, opt):
         BaseModel.initialize(self, opt)
 
-        print(
-            "===========================================LOADING Hourglass NETWORK====================================================")
+        print("============================== LOADING Hourglass NETWORK ==============================")
         model = pytorch_DIW_scratch.pytorch_DIW_scratch
         model = torch.nn.parallel.DataParallel(model, device_ids=[0])
         model_parameters = self.load_network(model, 'G', 'best_generalization')

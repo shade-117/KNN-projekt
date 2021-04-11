@@ -1,5 +1,5 @@
-from aligned_data_loader import AlignedDataLoader_TEST
-from aligned_data_loader import AlignedDataLoader
+from megadepth.data.aligned_data_loader import AlignedDataLoader_TEST
+from megadepth.data.aligned_data_loader import AlignedDataLoader
 
 
 def CreateDataLoader(_root, _list_dir, _input_height, _input_width, is_flip=True, shuffle=True):

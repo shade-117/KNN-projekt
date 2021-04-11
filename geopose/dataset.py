@@ -32,7 +32,7 @@ class GeoPoseDataset(torch.utils.data.Dataset):
         self.verbose = verbose
         self.img_paths = []
         self.depth_paths = []
-        self.transforms = None
+        self.transforms = transforms
         self.jpeg_reader = TurboJPEG()
 
         # list only directories, sorting not really necessary

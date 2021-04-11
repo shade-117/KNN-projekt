@@ -58,8 +58,8 @@ total_iteration = 0
 
 print("=================================  BEGIN VALIDATION =====================================")
 
-best_loss = validation(model, test_dataset, test_dataset_size)  # todo investigate
-print("best_loss  ", best_loss)
+# best_loss = validation(model, test_dataset, test_dataset_size)  # todo investigate
+# print("best_loss  ", best_loss)
 
 start_diw_idx = -1
 valiation_interval = 300
@@ -72,8 +72,8 @@ for epoch in range(0, 20):
     # landscape 
     for i, data in enumerate(dataset_l):
         total_iteration = total_iteration + 1
-        print('L epoch %d, iteration %d, best_loss %f num_iterations %d best_epoch %d' % (
-        epoch, i, best_loss, num_iterations_L, best_epoch))
+        # print('L epoch %d, iteration %d, best_loss %f num_iterations %d best_epoch %d' % (
+        # epoch, i, best_loss, num_iterations_L, best_epoch))
         stacked_img = data['img_1']
         targets = data['target_1']
         is_DIW = False
@@ -83,8 +83,8 @@ for epoch in range(0, 20):
     # portrait 
     for i, data in enumerate(dataset_p):
         total_iteration = total_iteration + 1
-        print('P epoch %d, iteration %d, best_loss %f num_iterations %d best_epoch %d' % (
-              epoch, i, best_loss, num_iterations_P, best_epoch))
+        # print('P epoch %d, iteration %d, best_loss %f num_iterations %d best_epoch %d' % (
+        #       epoch, i, best_loss, num_iterations_P, best_epoch))
         stacked_img = data['img_1']
         targets = data['target_1']
         is_DIW = False

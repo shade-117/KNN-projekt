@@ -32,6 +32,7 @@ class GeoPoseDataset(torch.utils.data.Dataset):
         self.verbose = verbose
         self.img_paths = []
         self.depth_paths = []
+        self.mask_paths = []
         self.transforms = transforms
         self.jpeg_reader = TurboJPEG()
 
@@ -41,13 +42,16 @@ class GeoPoseDataset(torch.utils.data.Dataset):
         for curr_dir in listed_data_dir:
             img_path = os.path.join(ds_dir, curr_dir, 'photo.jpeg')
             depth_path = os.path.join(ds_dir, curr_dir, 'distance_crop.pfm')
+            mask_path = os.path.join(ds_dir, curr_dir, 'pinhole_labels_crop.png')
 
             if not (os.path.isfile(img_path) and
-                    os.path.isfile(depth_path)):
+                    os.path.isfile(depth_path) and
+                    os.path.isfile(mask_path)):
                 continue
 
             self.img_paths.append(img_path)
             self.depth_paths.append(depth_path)
+            self.mask_paths.append(mask_path)
 
         if len(self.img_paths) != len(self.depth_paths):
             print("image and depth lists length does not match {} x {}"
@@ -68,12 +72,14 @@ class GeoPoseDataset(torch.utils.data.Dataset):
 
         elif isinstance(idx, Iterable):
             return (self.__getitem__(i) for i in idx)
-        elif not isinstance(idx, int):
+        elif not np.issubdtype(type(idx), np.integer):
             return TypeError('Invalid index type')
-
+        
+        # depth image (ground-truth)
         depth_img = imageio.imread(self.depth_paths[idx], format='pfm')
         depth_img = np.flipud(np.array(depth_img)).copy()
 
+        # remove NaN from depth image
         indices = np.argwhere(np.isnan(depth_img))
         mean_depth = np.nanmean(depth_img)
         for ind_nan in indices:
@@ -83,26 +89,33 @@ class GeoPoseDataset(torch.utils.data.Dataset):
         if self.verbose and len(indices) > 0:
             print('NaN x{} in {}'.format(len(indices), self.img_paths[idx]))
 
-        # before: 88ms
-        # base_img = imageio.imread(self.img_paths[idx], format='jpeg')
-
+        # input image
         with open(self.img_paths[idx], 'rb') as photo_jpeg:
-            # now: 46ms
             base_img = self.jpeg_reader.decode(photo_jpeg.read(), 0)  # 0 == RGB
         base_img = np.array(base_img)
+        
+        # image segmentation (ground-truth)
+        mask_img = imageio.imread(self.mask_paths[idx], format='png')  # (WxHxC)
+        mask_img = mask_img[:, :, :3].sum(axis=2)  # ignore alpha channel, merge channels
+        mask_sky = mask_img == 0
+
+        target_size = base_img.shape[0], base_img.shape[1]
+        depth_img = resize(depth_img, target_size)
+        mask_sky = resize(mask_sky, target_size)
 
         if self.transforms is not None:
             base_img = self.transforms(base_img)
             depth_img = self.transforms(depth_img)
+            mask_sky = self.transforms(mask_sky)
 
         # sample = {
         #     'depth': depth_img,
         #     'img': base_img,
-        #     'path': os.path.dirname(self.img_paths[idx])  # unused
+        #     'mask': mask_sky
+        #     'path': os.path.dirname(self.img_paths[idx])
         # }
         # return sample
-
-        return base_img, depth_img, os.path.dirname(self.img_paths[idx])
+        return base_img, depth_img, mask_sky, os.path.dirname(self.img_paths[idx])
 
     def __iter__(self):
         for i in range(len(self)):

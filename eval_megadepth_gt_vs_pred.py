@@ -13,10 +13,10 @@ ds = dataset.GeoPoseDataset(ds_dir=ds_dir)
 
 for d in ds:
     # d = ds[2511]
-    input_image, depth_img, dir_path = d
+    input_image, depth_img, mask, dir_path = d
     gt_resized = np.float32(resize(depth_img, (input_height, input_width), preserve_range=True))
 
-    mask = np.isnan(gt_resized)
+    # mask = np.isnan(gt_resized)
     gt_resized = np.where(mask, gt_resized[gt_resized > 0].mean(), gt_resized)
     pred = np.load(dir_path + '/depth_map_no_sky.npy')
     log_pred = np.log((pred + 2))

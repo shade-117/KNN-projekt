@@ -41,6 +41,7 @@ from utils.process_images import get_sky_mask, transform_image_for_megadepth, me
     transform_image_for_semseg, semseg_predict, apply_sky_mask
 from utils.semseg import visualize_result
 from geopose.dataset import GeoPoseDataset, clear_dataset_dir, rotate_images
+from geopose.load_dataset_example import rmse_loss
 
 
 class JointLoss(torch.nn.Module):
@@ -240,7 +241,7 @@ class JointLoss(torch.nn.Module):
                 continue
             else:
                 total_loss += self.w_data * self.Data_Loss(prediction_d[i, :, :], mask_0[i, :, :], d_gt_0[i, :, :])
-                # this could be 4 scales of gradient loss: -Petr
+                # these could be 4 scales of gradient loss: -Petr
                 total_loss += self.w_grad * self.GradientLoss(prediction_d[i, :, :], mask_0[i, :, :], d_gt_0[i, :, :])
                 total_loss += self.w_grad * self.GradientLoss(prediction_d_1[i, :, :], mask_1[i, :, :], d_gt_1[i, :, :])
                 total_loss += self.w_grad * self.GradientLoss(prediction_d_2[i, :, :], mask_2[i, :, :], d_gt_2[i, :, :])
@@ -250,7 +251,7 @@ class JointLoss(torch.nn.Module):
         if count == 0:
             count = 1
 
-        total_loss = total_loss / count
+        total_loss /= count
 
         self.total_loss = total_loss
 
@@ -261,56 +262,64 @@ class JointLoss(torch.nn.Module):
 
 
 if __name__ == '__main__':
-
-    megadepth_checkpoints_path = './megadepth/checkpoints/'
-    # with patch.object(sys, 'argv', ['/home/petrmiculek/Code/KNN-projekt/geopose/train.py']):
-    #     opt = EvalOptions().parse(megadepth_checkpoints_path)
-
-    with patch.object(sys, 'argv', ['/home/petrmiculek/Code/KNN-projekt/geopose/train.py']):
-        opt = TrainOptions().parse()  # set CUDA_VISIBLE_DEVICES before import torch
-
-    model = create_model(opt)
-    # model = HGModel(opt)
-
-    if False:
-        root = "/"
-
-        train_list_dir_landscape = root + '/phoenix/S6/zl548/MegaDpeth_code/train_list/landscape/'
-        input_height = 240
-        input_width = 320
-        data_loader_l = CreateDataLoader(root, train_list_dir_landscape, input_height, input_width)
-        dataset_l = data_loader_l.load_data()
-        dataset_size_l = len(data_loader_l)
-        print('========================= training landscape  images = %d' % dataset_size_l)
-    print('...')
-
-    ds_dir = 'datasets/geoPose3K_final_publish/'
+    """ dataset """
+    ds_dir = 'datasets/geoPose3K_mini/'
     # clear_dataset_dir(ds_dir)
     # rotate_images(ds_dir)
 
     data_transform = transforms.Compose([transforms.ToTensor(),
-                                         transforms.CenterCrop((384, 512)),
+                                         # transforms.CenterCrop((384, 512)),
                                          # transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                         #                      std=[0.229, 0.224, 0.225])
+                                         #                      std=[0.229, 0.224, 0.225])  # todo fix broadcasting error
                                          ])
 
     ds = GeoPoseDataset(ds_dir=ds_dir, transforms=data_transform, verbose=False)
 
     loader = torch.utils.data.DataLoader(ds, batch_size=4, num_workers=4, collate_fn=ds.collate)
 
-    """ Past here nothing has been proven to work """
-    # set training mode
+    """ model """
+    megadepth_checkpoints_path = './megadepth/checkpoints/'
+
+    opt = TrainOptions().parse()  # set CUDA_VISIBLE_DEVICES before import torch
+
+    model = create_model(opt)
+    # model = HGModel(opt)
+
+    """ Training """
     model.netG.train()
-
-    # get loss function
-
-    # get optimizer
-    self.optimizer_G = torch.optim.Adam(model.netG.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
-
-    for i, sample in enumerate(ds[0:5]):
-        img, depth, path = sample
+    optimizer = torch.optim.Adam(model.netG.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
+    for i, sample in enumerate(ds[0:1]):
+        img, depth, mask, path = sample
 
         optimizer.zero_grad()
-        model.netG.forward(img)
-        self.input_images = Variable(self.input.cuda())
-        self.prediction_d = self.netG.forward(self.input_images)
+        img = torch.unsqueeze(img, dim=0)
+        pred = model.netG.forward(img).cpu()
+
+        min_val = min(torch.min(pred), torch.min(depth))
+        if min_val < 1:
+            print('min(gt) =', torch.min(depth))
+            print('min(pred) =', torch.min(pred))
+            pred += 2 - min_val
+            depth += 2 - min_val
+
+        pred = torch.log(torch.squeeze(pred))
+        depth = torch.log(torch.squeeze(depth))
+        mask = torch.squeeze(mask)
+
+        loss = rmse_loss(pred, depth, mask)
+        print(loss)
+
+        loss.backward()
+        optimizer.step()
+
+"""
+RuntimeError: one of the variables needed for gradient computation 
+has been modified by an inplace operation: [torch.FloatTensor [1, 1, 384, 512]], 
+which is output 0 of torch::autograd::CopyBackwards, is at version 2; 
+expected version 1 instead. Hint: enable anomaly detection to find 
+the operation that failed to compute its gradient, 
+with torch.autograd.set_detect_anomaly(True).
+
+RuntimeError: Function 'SqrtBackward' returned nan values in its 0th output.
+
+"""

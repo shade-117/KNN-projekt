@@ -1,10 +1,15 @@
-from geopose.dataset import GeoPoseDataset, clear_dataset_dir, rotate_images
+# stdlib
+import time
+
+# external
 from torchvision import transforms
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
 from skimage.transform import resize
-import time
+
+# local
+from geopose.dataset import GeoPoseDataset, clear_dataset_dir, rotate_images
 
 
 def rmse_loss(log_prediction_d, log_gt, mask=None, scale_invariant=True):
@@ -42,9 +47,8 @@ if __name__ == '__main__':
     # rotate_images(ds_dir)
 
     data_transform = transforms.Compose([transforms.ToTensor(),
-                                         transforms.CenterCrop((384, 512)),
-                                         transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                                              std=[0.229, 0.224, 0.225])])
+                                         transforms.CenterCrop((384, 512))]
+                                        )
 
     ds = GeoPoseDataset(ds_dir=ds_dir, transforms=data_transform, verbose=False)
     ds_len = len(ds)
@@ -57,7 +61,7 @@ if __name__ == '__main__':
     print(random_ind)
     for rndidx in random_ind:
         print(rndidx)
-        img, gt, dirpath = ds[int(rndidx)]
+        img, gt, mask, dirpath = ds[int(rndidx)]
         start = time.time()
         # get prediction and gt, resize gt
         pred = np.load(dirpath + '/depth_map_no_sky.npy')

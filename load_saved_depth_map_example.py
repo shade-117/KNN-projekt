@@ -10,7 +10,7 @@ ds = dataset.GeoPoseDataset(ds_dir=ds_dir)
 nums = random.sample(range(0, len(ds)), 2)
 for i in nums:
     print(i)
-    input_image, depth_img, dir_path = ds[i]
+    input_image, depth_img, mask, dir_path = ds[i]
 
     dir_path = os.path.dirname(os.path.realpath(dir_path))
     os.path.join(dir_path, 'depth_map.npy')

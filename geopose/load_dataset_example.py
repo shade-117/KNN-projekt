@@ -59,14 +59,16 @@ if __name__ == '__main__':
     # make a symlink to the dataset or put it into main project folder:
     # ln -s {{path/to/file_or_directory}} {{path/to/symlink}}
 
-    ds_dir = 'datasets/geoPose3K_final_publish/'
+    ds_dir = 'datasets/geoPose3K_mini/'
+
     # clear_dataset_dir(ds_dir)
     # rotate_images(ds_dir)
 
     data_transform = transforms.Compose([transforms.ToTensor(),
                                          transforms.CenterCrop((384, 512)),
-                                         transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                                              std=[0.229, 0.224, 0.225])])
+                                         # transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                         #                      std=[0.229, 0.224, 0.225])
+                                         ])
 
     ds = GeoPoseDataset(ds_dir=ds_dir, transforms=data_transform, verbose=False)
 
@@ -97,14 +99,14 @@ if __name__ == '__main__':
         # dataset also supports slicing
         sample = ds[0:3]
 
-    if False:
-        for img, depth, pred in ds[0:3]:
+    for img, depth, mask, path in ds[0:3]:
 
-            f, ax = plt.subplots(1, 3)
-            ax[0].imshow(img)
-            ax[1].imshow(depth)
-            ax[2].imshow(pred)
-            f.show()
+        f, ax = plt.subplots(1, 3)
+        ax[0].imshow(img)
+        ax[1].imshow(depth)
+        ax[2].imshow(mask)
+        f.show()
+    if False:
 
             plt.imshow(pred - depth)
             plt.colorbar()
@@ -119,31 +121,33 @@ if __name__ == '__main__':
 
     if False:
         # playing around with RMSE
-        img, depth, pred = ds[0]
+        img, depth, mask, path = ds[0]
         depth += 2
 
         # pretend noisier prediction is GT
         depth_fake_gt = depth.copy() - 10 + np.random.random(np.prod(depth.shape)).reshape((depth.shape))
 
-        mask = np.zeros_like(depth) + 1  # ones-mask
+        # mask = np.zeros_like(depth) + 1  # ones-mask
 
         log_gt = torch.Tensor(depth)
-        log_prediction_d = torch.Tensor(pred)
-
         mask = torch.Tensor(mask)
+        # log_prediction_d = torch.Tensor(pred)
+
 
     # img, depth, path = ds[0]
 
 
-def rmse_loss(log_prediction_d, log_gt, mask=None, scale_invariant=True):
+def rmse_loss(log_pred, log_gt, mask=None, scale_invariant=True):
     # from rmse_error_main.py
-    assert log_gt.shape == log_prediction_d.shape
+    assert log_gt.shape == log_pred.shape, \
+        '{} x {}'.format(log_gt.shape, log_pred.shape)
+
     if mask is None:
-        mask = torch.Tensor(np.zeros_like(log_prediction_d) + 1)
+        mask = torch.Tensor(np.zeros(log_pred.shape) + 1)
 
     n = torch.sum(mask)
 
-    log_d_diff = log_prediction_d - log_gt
+    log_d_diff = log_pred - log_gt
     log_d_diff = torch.mul(log_d_diff, mask)
 
     s1 = torch.sum(torch.pow(log_d_diff, 2)) / n

@@ -71,7 +71,11 @@ if __name__ == '__main__':
 
     for i, sample in enumerate(ds):
         start = time.time()
-        input_image, depth_img, mask_img, dir_path = sample
+        input_image = sample['img']
+        depth_img = sample['depth']
+        mask_img = sample['mask']
+        dir_path = sample['path']
+
         megadepth_input = transform_image_for_megadepth(input_image, input_height, input_width)
         megadepth_pred = megadepth_predict(megadepth_model, megadepth_input)
         megadepth_pred_backup = np.copy(megadepth_pred)

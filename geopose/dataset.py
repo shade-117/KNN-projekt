@@ -100,26 +100,29 @@ class GeoPoseDataset(torch.utils.data.Dataset):
         # image segmentation (ground-truth)
         mask_img = imageio.imread(self.mask_paths[idx], format='png')  # (WxHxC)
         mask_img = mask_img[:, :, :3].sum(axis=2)  # ignore alpha channel, merge channels
-        mask_sky = mask_img == 0
 
         # target_size = base_img.shape[0], base_img.shape[1]
         base_img = resize(base_img, self.target_size)
         depth_img = resize(depth_img, self.target_size)
-        mask_sky = resize(mask_sky, self.target_size)
+        mask_img = resize(mask_img, self.target_size)
+
+        # mask_sky = mask_img != 0
+        mask_sky = depth_img != -1
 
         if self.transforms is not None:
             base_img = self.transforms(base_img)
             depth_img = self.transforms(depth_img)
             mask_sky = self.transforms(mask_sky)
 
-        # sample = {
-        #     'depth': depth_img,
-        #     'img': base_img,
-        #     'mask': mask_sky
-        #     'path': os.path.dirname(self.img_paths[idx])
-        # }
-        # return sample
-        return base_img, depth_img, mask_sky, os.path.dirname(self.img_paths[idx])
+        sample = {
+            'depth': depth_img,
+            'img': base_img,
+            'mask': mask_sky,
+            'path': os.path.dirname(self.img_paths[idx]),
+        }
+        return sample
+        # return base_img, depth_img, mask_sky, os.path.dirname(self.img_paths[idx])
+
 
     def __iter__(self):
         for i in range(len(self)):
@@ -127,6 +130,7 @@ class GeoPoseDataset(torch.utils.data.Dataset):
 
     @staticmethod
     def collate(data):
+        # unused
         return tuple(zip(*data))
 
 
@@ -305,3 +309,6 @@ def rotate_images(ds_dir='datasets/geoPose3K_final_publish/', show_cv=False, sho
         print(ex)
     finally:
         os.chdir(old_cwd)
+
+
+

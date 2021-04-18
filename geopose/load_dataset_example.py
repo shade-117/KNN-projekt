@@ -123,8 +123,11 @@ if __name__ == '__main__':
 
     if False:
         # playing around with RMSE
-        img, depth, mask, path = ds[0]
-        depth += 2
+        sample = ds[0]
+        img = sample['img']
+        depth = sample['depth']
+        mask = sample['mask']
+        path = sample['path']
 
         # pretend noisier prediction is GT
         depth_fake_gt = depth.copy() - 10 + np.random.random(np.prod(depth.shape)).reshape((depth.shape))

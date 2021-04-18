@@ -43,24 +43,26 @@ from utils.semseg import visualize_result
 from geopose.dataset import GeoPoseDataset, clear_dataset_dir, rotate_images
 
 
-def rmse_loss(log_pred, log_gt, mask=None, scale_invariant=True):
+def rmse_loss(pred, gt, mask=None, scale_invariant=True):
     # from rmse_error_main.py
-    assert log_gt.shape == log_pred.shape, \
-        '{} x {}'.format(log_gt.shape, log_pred.shape)
+    assert gt.shape == pred.shape, \
+        '{} x {}'.format(gt.shape, pred.shape)
 
-    log_pred = torch.log(log_pred + 10.0)
-    log_gt = torch.log(log_gt + 10.0)
+    save_from_nan = 100.0
+
+    pred = torch.log(pred + save_from_nan)
+    gt = torch.log(gt + save_from_nan)
 
     if mask is None:
-        mask = torch.zeros(log_pred.shape) + 1
+        mask = torch.zeros(pred.shape) + 1
 
     n = torch.sum(mask)
 
-    log_d_diff = log_pred - log_gt
-    log_d_diff = torch.mul(log_d_diff, mask)
+    diff = pred - gt
+    diff = torch.mul(diff, mask)
 
-    s1 = torch.sum(torch.pow(log_d_diff, 2)) / n
-    s2 = torch.pow(torch.sum(log_d_diff), 2) / (n * n)
+    s1 = torch.sum(torch.pow(diff, 2)) / n
+    s2 = torch.pow(torch.sum(diff), 2) / (n * n)
 
     if scale_invariant:
         data_loss = s1 - s2
@@ -85,8 +87,8 @@ if __name__ == '__main__':
                                          ])
 
     ds = GeoPoseDataset(ds_dir=ds_dir, transforms=data_transform, verbose=False)
-
-    loader = torch.utils.data.DataLoader(ds, batch_size=4, num_workers=4, collate_fn=ds.collate)
+    batch_size = 1
+    loader = torch.utils.data.DataLoader(ds, batch_size=batch_size, num_workers=4, )  # collate_fn=ds.collate
 
     """ model """
     megadepth_checkpoints_path = './megadepth/checkpoints/'
@@ -98,33 +100,55 @@ if __name__ == '__main__':
     """ Training """
     # torch.autograd.set_detect_anomaly(True)
     model.netG.train()
-    optimizer = torch.optim.Adam(model.netG.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
+
+    optimizer = torch.optim.Adam(model.netG.parameters(), lr=opt.lr * 10, betas=(opt.beta1, 0.999))
+
+    epochs = 20
+    i = 0
+    running_loss = 0.0
+    loss_history = []
+
     # with torch.no_grad():  # no training - just evaluate loss
-    if True:
-        for i, sample in enumerate(ds):
-            img, depth, mask, path = sample
+    try:
+        for epoch in range(epochs):
+            for i, batch in enumerate(loader):
+                imgs = batch['img'].type(torch.FloatTensor)
+                depths = batch['depth']
+                masks = batch['mask']
+                paths = batch['path']
 
-            optimizer.zero_grad()
-            img = torch.unsqueeze(img, dim=0).type(torch.FloatTensor)
+                # whole batch prediction
+                # preds = model.netG.forward(imgs).cpu()
 
-            pred = model.netG.forward(img).cpu()
+                for sample in range(batch_size):
+                    img = imgs[sample]
+                    depth = depths[sample]
+                    mask = masks[sample]
+                    path = paths[sample]
 
-            # min_val = min(torch.min(pred), torch.min(depth))
-            # if min_val < 1:
-            #     print('min(gt) =', torch.min(depth))
-            #     print('min(pred) =', torch.min(pred))
-            #     pred += 2 - min_val
-            #     depth += 2 - min_val
+                    i += 1
 
-            pred = torch.squeeze(pred)
-            depth = torch.squeeze(depth)
-            mask = torch.squeeze(mask)
+                    optimizer.zero_grad()
+                    img = torch.unsqueeze(img, dim=0)
 
-            loss = rmse_loss(pred, depth, mask)
-            print(loss)
+                    # prediction for single sample
+                    pred = model.netG.forward(img).cpu()
 
-            loss.backward()
-            optimizer.step()
+                    pred = torch.squeeze(pred, dim=0)
+
+                    loss = rmse_loss(pred, depth, mask)
+                    print(loss.item())
+                    loss_history.append(loss.item())
+
+                    loss.backward()
+                    optimizer.step()
+
+    except KeyboardInterrupt:
+        print('stopped training')
+
+    plt.plot(loss_history)
+    plt.title('Training loss')
+    plt.show()
 
 
 class JointLoss(torch.nn.Module):

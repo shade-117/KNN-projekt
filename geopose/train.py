@@ -101,7 +101,7 @@ if __name__ == '__main__':
     # torch.autograd.set_detect_anomaly(True)
     model.netG.train()
 
-    optimizer = torch.optim.Adam(model.netG.parameters(), lr=opt.lr * 10, betas=(opt.beta1, 0.999))
+    optimizer = torch.optim.Adam(model.netG.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
 
     epochs = 20
     i = 0
@@ -120,7 +120,7 @@ if __name__ == '__main__':
 
                 # whole batch prediction
                 # preds = model.netG.forward(imgs).cpu()
-
+                batch_loss = 0
                 for sample in range(batch_size):
                     img = imgs[sample]
                     depth = depths[sample]
@@ -135,18 +135,20 @@ if __name__ == '__main__':
                     # prediction for single sample
                     pred = model.netG.forward(img).cpu()
 
-                    #pridane pre log
+                    #pridane pre logaritmovanie
                     pred = torch.squeeze(torch.exp(pred), dim=0)
                     pred_t = torch.log(pred + 2)
                     depth_t = torch.log(depth + 2)
-                    loss = rmse_loss(pred_t, depth_t, mask)
+                    loss = rmse_loss(pred_t, depth_t, mask, scale_invariant=False)
 
                     #loss = rmse_loss(pred, depth, mask)
-                    print(loss.item())
-                    loss_history.append(loss.item())
+                    batch_loss += loss
+                batch_loss_res = batch_loss / batch_size
+                print(batch_loss_res.item())
+                loss_history.append(batch_loss_res.item())
 
-                    loss.backward()
-                    optimizer.step()
+                batch_loss_res.backward()
+                optimizer.step()
 
     except KeyboardInterrupt:
         print('stopped training')
@@ -154,3 +156,7 @@ if __name__ == '__main__':
     plt.plot(loss_history)
     plt.title('Training loss')
     plt.show()
+
+    # todo uncomment in colab for model saving
+    # save_path = '/content/saved_net_G.pth'
+    # torch.save(model.netG.state_dict(), save_path)

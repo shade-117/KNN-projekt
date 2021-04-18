@@ -36,6 +36,9 @@ class GeoPoseDataset(torch.utils.data.Dataset):
         self.transforms = transforms
         self.jpeg_reader = TurboJPEG()
 
+        self.target_size = 384, 512
+
+
         # list only directories, sorting not really necessary
         listed_data_dir = [d for d in sorted(os.listdir(ds_dir)) if os.path.isdir(os.path.join(ds_dir, d))]
 
@@ -99,9 +102,10 @@ class GeoPoseDataset(torch.utils.data.Dataset):
         mask_img = mask_img[:, :, :3].sum(axis=2)  # ignore alpha channel, merge channels
         mask_sky = mask_img == 0
 
-        target_size = base_img.shape[0], base_img.shape[1]
-        depth_img = resize(depth_img, target_size)
-        mask_sky = resize(mask_sky, target_size)
+        # target_size = base_img.shape[0], base_img.shape[1]
+        base_img = resize(base_img, self.target_size)
+        depth_img = resize(depth_img, self.target_size)
+        mask_sky = resize(mask_sky, self.target_size)
 
         if self.transforms is not None:
             base_img = self.transforms(base_img)

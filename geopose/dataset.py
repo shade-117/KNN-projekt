@@ -98,13 +98,13 @@ class GeoPoseDataset(torch.utils.data.Dataset):
         base_img = np.array(base_img)
         
         # image segmentation (ground-truth)
-        mask_img = imageio.imread(self.mask_paths[idx], format='png')  # (WxHxC)
-        mask_img = mask_img[:, :, :3].sum(axis=2)  # ignore alpha channel, merge channels
+        # mask_img = imageio.imread(self.mask_paths[idx], format='png')  # (WxHxC)
+        # mask_img = mask_img[:, :, :3].sum(axis=2)  # ignore alpha channel, merge channels
 
         # target_size = base_img.shape[0], base_img.shape[1]
         base_img = resize(base_img, self.target_size)
         depth_img = resize(depth_img, self.target_size)
-        mask_img = resize(mask_img, self.target_size)
+        # mask_img = resize(mask_img, self.target_size)
 
         # mask_sky = mask_img != 0
         mask_sky = depth_img != -1

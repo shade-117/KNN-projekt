@@ -49,11 +49,12 @@ class BaseModel:
     # helper loading function that can be used by subclasses
     def load_network(self, network, network_label, epoch_label):
         save_filename = '%s_net_%s.pth' % (epoch_label, network_label)
-        save_path = self.save_dir + "/" + save_filename
+        save_path = self.save_dir + os.sep + save_filename
         print(save_path)
         # todo ak to nepojde tak uncomment totoo
-        # if not os.path.isdir(save_path):
-        #     save_path = os.path.join('megadepth', 'checkpoints', save_path)
+        if not os.path.isdir(save_path):
+            save_path = os.path.join('megadepth', 'checkpoints', save_path)
+            assert(os.path.isfile(save_path))
         model = torch.load(save_path)
         return model
         # network.load_state_dict(torch.load(save_path))

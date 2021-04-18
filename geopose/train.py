@@ -48,11 +48,6 @@ def rmse_loss(pred, gt, mask=None, scale_invariant=True):
     assert gt.shape == pred.shape, \
         '{} x {}'.format(gt.shape, pred.shape)
 
-    #save_from_nan = 100.0
-
-    #pred = torch.log(pred + save_from_nan)
-    #gt = torch.log(gt + save_from_nan)
-
     if mask is None:
         mask = torch.zeros(pred.shape) + 1
 
@@ -62,9 +57,9 @@ def rmse_loss(pred, gt, mask=None, scale_invariant=True):
     diff = torch.mul(diff, mask)
 
     s1 = torch.sum(torch.pow(diff, 2)) / n
-    s2 = torch.pow(torch.sum(diff), 2) / (n * n)
 
     if scale_invariant:
+        s2 = torch.pow(torch.sum(diff), 2) / (n * n)
         data_loss = s1 - s2
     else:
         data_loss = s1
@@ -80,25 +75,57 @@ if __name__ == '__main__':
     # clear_dataset_dir(ds_dir)
     # rotate_images(ds_dir)
 
-    data_transform = transforms.Compose([transforms.ToTensor(),
-                                         # transforms.CenterCrop((384, 512)),
-                                         # transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                         #                      std=[0.229, 0.224, 0.225])  # todo fix broadcasting error
-                                         ])
+    """
+    data_transform = transforms.Compose([  
+        transforms.ToTensor(),  
+        transforms.CenterCrop((384, 512)),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                             std=[0.229, 0.224, 0.225])
+    ])
+                             
+    Proč nepoužíváme transforms:
+    ToTensor()
+        o převod na tensor se postará dataloader a s touto transformací
+        pak měly tensory vytvořené datasetem + dataloaderem dvě dimenze pro batch
+        (1, 1, 3, 384, 512) pro image input (3, 384, 512)
+          
+    CenterCrop()
+        kazilo to mask_sky
+        resize na (384, 512) probíhá při načítání vstupních souborů v datasetu
+    
+    Normalize()
+        házelo to broadcasting error
+        nevím, co by normalizace udělala s hloubkovou mapou
+    """
 
-    ds = GeoPoseDataset(ds_dir=ds_dir, transforms=data_transform, verbose=False)
-    batch_size = 4
-    loader = torch.utils.data.DataLoader(ds, batch_size=batch_size, num_workers=4, )  # collate_fn=ds.collate
+    """
+    todo:
+    
+    training/validation/test split
+    
+    gradient loss
+    
+    augmentace
+    
+    nan nahradit okolními hodnotami
+    
+    """
 
-    """ model """
+    """ Dataset """
+    batch_size = 1
+    ds = GeoPoseDataset(ds_dir=ds_dir, transforms=None, verbose=False)
+    loader = torch.utils.data.DataLoader(ds, batch_size=batch_size, num_workers=4)
+
+    """ Model """
     megadepth_checkpoints_path = './megadepth/checkpoints/'
 
-    with patch.object(sys, 'argv', ['/content/geopose/train.py']):
-      opt = TrainOptions().parse()  # set CUDA_VISIBLE_DEVICES before import torch
+    with patch.object(sys, 'argv', [os.getcwd()]):
+        opt = TrainOptions().parse()  # set CUDA_VISIBLE_DEVICES before import torch
     model = create_model(opt)
     # model = HGModel(opt)
+
     """ Training """
-    # torch.autograd.set_detect_anomaly(True)
+    # torch.autograd.set_detect_anomaly(True)  # debugging
     model.netG.train()
 
     optimizer = torch.optim.Adam(model.netG.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
@@ -107,54 +134,46 @@ if __name__ == '__main__':
     i = 0
     running_loss = 0.0
     loss_history = []
+    scale_invariancy = False
 
-    # with torch.no_grad():  # no training - just evaluate loss
     try:
+        # with torch.no_grad():  # enable when not training to evaluate loss only
         for epoch in range(epochs):
             print("epoch: ", epoch)
             for i, batch in enumerate(loader):
-                imgs = batch['img'].type(torch.FloatTensor)
+                imgs = batch['img'].type(torch.FloatTensor).permute(0, 3, 1, 2)  # from NHWC to NCHW
+                # todo imgs transformations could be a part of transforms
+
                 depths = batch['depth']
                 masks = batch['mask']
                 paths = batch['path']
 
-                # whole batch prediction
-                # preds = model.netG.forward(imgs).cpu()
-                batch_loss = 0
-                for sample in range(batch_size):
-                    img = imgs[sample]
-                    depth = depths[sample]
-                    mask = masks[sample]
-                    path = paths[sample]
+                # batch prediction
+                preds = model.netG.forward(imgs).cpu()
+                preds = torch.squeeze(preds, dim=1)
 
-                    i += 1
+                # # pridane pre logaritmovanie
+                # pred = torch.squeeze(torch.exp(pred), dim=0)
+                # pred_t = torch.log(pred + 2)
+                # depth_t = torch.log(depth + 2)
+                # loss = rmse_loss(pred_t, depth_t, mask, scale_invariant=False)
 
-                    optimizer.zero_grad()
-                    img = torch.unsqueeze(img, dim=0)
+                batch_loss = rmse_loss(preds, depths, masks, scale_invariant=scale_invariancy)
+                batch_loss = batch_loss / batch_size
 
-                    # prediction for single sample
-                    pred = model.netG.forward(img).cpu()
+                print(batch_loss.item())
+                loss_history.append(batch_loss.item())
 
-                    #pridane pre logaritmovanie
-                    pred = torch.squeeze(torch.exp(pred), dim=0)
-                    pred_t = torch.log(pred + 2)
-                    depth_t = torch.log(depth + 2)
-                    loss = rmse_loss(pred_t, depth_t, mask, scale_invariant=False)
-
-                    #loss = rmse_loss(pred, depth, mask)
-                    batch_loss += loss
-                batch_loss_res = batch_loss / batch_size
-                print(batch_loss_res.item())
-                loss_history.append(batch_loss_res.item())
-
-                batch_loss_res.backward()
+                batch_loss.backward()
                 optimizer.step()
 
     except KeyboardInterrupt:
         print('stopped training')
 
     plt.plot(loss_history)
-    plt.title('Training loss')
+    plt.title('Training loss \n(scale {}invariant)'.format('' if scale_invariancy else 'non-'))
+    plt.xlabel('batch')
+    plt.ylabel('RMSE loss')
     plt.show()
 
     # todo uncomment in colab for model saving

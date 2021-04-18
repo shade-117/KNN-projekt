@@ -118,8 +118,9 @@ if __name__ == '__main__':
 
     """ Model """
     megadepth_checkpoints_path = './megadepth/checkpoints/'
-
-    with patch.object(sys, 'argv', [os.getcwd()]):
+    curr_script_path = os.path.join(os.getcwd(), 'geopose', 'train.py')
+    with patch.object(sys, 'argv', [curr_script_path]):
+        # fix for runnning code in interactive console/colab/notebooks
         opt = TrainOptions().parse()  # set CUDA_VISIBLE_DEVICES before import torch
     model = create_model(opt)
     # model = HGModel(opt)
@@ -172,7 +173,7 @@ if __name__ == '__main__':
 
     plt.plot(loss_history)
     plt.title('Training loss \n(scale {}invariant)'.format('' if scale_invariancy else 'non-'))
-    plt.xlabel('batch')
+    plt.xlabel('batch (size={})'.format(batch_size))
     plt.ylabel('RMSE loss')
     plt.show()
 

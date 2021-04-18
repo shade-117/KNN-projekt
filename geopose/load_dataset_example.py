@@ -14,9 +14,11 @@ from torchvision import transforms
 from skimage.transform import resize
 
 try:
+    from geopose.train import rmse_loss
     from geopose.dataset import GeoPoseDataset, clear_dataset_dir, rotate_images
 except ModuleNotFoundError:
     from dataset import GeoPoseDataset, clear_dataset_dir, rotate_images
+    from train import rmse_loss
 
 
 def iter_few(ds):
@@ -137,27 +139,3 @@ if __name__ == '__main__':
     # img, depth, path = ds[0]
 
 
-def rmse_loss(log_pred, log_gt, mask=None, scale_invariant=True):
-    # from rmse_error_main.py
-    assert log_gt.shape == log_pred.shape, \
-        '{} x {}'.format(log_gt.shape, log_pred.shape)
-
-    if mask is None:
-        mask = torch.Tensor(np.zeros(log_pred.shape) + 1)
-
-    n = torch.sum(mask)
-
-    log_d_diff = log_pred - log_gt
-    log_d_diff = torch.mul(log_d_diff, mask)
-
-    s1 = torch.sum(torch.pow(log_d_diff, 2)) / n
-    s2 = torch.pow(torch.sum(log_d_diff), 2) / (n * n)
-
-    if scale_invariant:
-        data_loss = s1 - s2
-    else:
-        data_loss = s1
-
-    data_loss = torch.sqrt(data_loss)
-
-    return data_loss

@@ -94,7 +94,9 @@ if __name__ == '__main__':
 
         # prediction for single sample
         pred = megadepth_model.netG.forward(img).cpu()
-        megadepth_pred = torch.squeeze(torch.exp(pred), dim=0)
+        # megadepth_pred = torch.squeeze(torch.exp(pred), dim=0)
+        megadepth_pred = torch.squeeze(pred, dim=0)
+
 
         # megadepth_input = transform_image_for_megadepth(input_image, input_height, input_width)
         # megadepth_pred = megadepth_predict(megadepth_model, megadepth_input)
@@ -134,13 +136,13 @@ if __name__ == '__main__':
         ax2.imshow(depth_img.squeeze())
         ax3.imshow(megadepth_pred_backup.squeeze())
         ax4.imshow(megadepth_pred.detach().numpy().squeeze())
-        fig.show()
-        plt.show()
+        # fig.show()
+        # plt.show()
         # todo save some figures
-        # print(i)
-        # fig.savefig('./figs/ours/' + str(i) + '.png', dpi=110)
-        # if i == 50:
-        #     break
+        print(i)
+        fig.savefig('./figs/baseline/' + str(i) + '.png', dpi=110)
+        if i == 50:
+            break
 
         # todo save predicted depths as .npy
         # print(dir_path)

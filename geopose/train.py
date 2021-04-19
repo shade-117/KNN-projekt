@@ -1,6 +1,8 @@
 # stdlib
 from collections.abc import Iterable
 from unittest.mock import patch
+from collections.abc import Iterable
+from unittest.mock import patch
 import csv
 import gzip
 import h5py
@@ -76,51 +78,29 @@ if __name__ == '__main__':
     # rotate_images(ds_dir)
 
     """
-    data_transform = transforms.Compose([  
-        transforms.ToTensor(),  
-        transforms.CenterCrop((384, 512)),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                             std=[0.229, 0.224, 0.225])
-    ])
-                             
-    Proč nepoužíváme transforms:
-    ToTensor()
-        o převod na tensor se postará dataloader a s touto transformací
-        pak měly tensory vytvořené datasetem + dataloaderem dvě dimenze pro batch
-        (1, 1, 3, 384, 512) pro image input (3, 384, 512)
-          
-    CenterCrop()
-        kazilo to mask_sky
-        resize na (384, 512) probíhá při načítání vstupních souborů v datasetu
-    
-    Normalize()
-        házelo to broadcasting error
-        nevím, co by normalizace udělala s hloubkovou mapou
-    """
-
-    """
     todo:
-    
+
     training/validation/test split
-    
+
     gradient loss
-    
+
     augmentace
-    
+
     nan nahradit okolními hodnotami
-    
+
     """
 
     """ Dataset """
-    batch_size = 1
+    batch_size = 4
     ds = GeoPoseDataset(ds_dir=ds_dir, transforms=None, verbose=False)
-    loader = torch.utils.data.DataLoader(ds, batch_size=batch_size, num_workers=4)
+    loader = torch.utils.data.DataLoader(ds, batch_size=batch_size, num_workers=2)
 
     """ Model """
     megadepth_checkpoints_path = './megadepth/checkpoints/'
+
     curr_script_path = os.path.join(os.getcwd(), 'geopose', 'train.py')
+    print(curr_script_path)
     with patch.object(sys, 'argv', [curr_script_path]):
-        # fix for runnning code in interactive console/colab/notebooks
         opt = TrainOptions().parse()  # set CUDA_VISIBLE_DEVICES before import torch
     model = create_model(opt)
     # model = HGModel(opt)
@@ -129,9 +109,12 @@ if __name__ == '__main__':
     # torch.autograd.set_detect_anomaly(True)  # debugging
     model.netG.train()
 
-    optimizer = torch.optim.Adam(model.netG.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
+    optimizer = torch.optim.Adam(model.netG.parameters(), lr=opt.lr * 100, betas=(opt.beta1, 0.999))
+    # optimizer = torch.optim.Adam(model.netG.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
 
-    epochs = 20
+    epochs = 50
+    epochs_trained = 0
+
     i = 0
     running_loss = 0.0
     loss_history = []
@@ -139,7 +122,7 @@ if __name__ == '__main__':
 
     try:
         # with torch.no_grad():  # enable when not training to evaluate loss only
-        for epoch in range(epochs):
+        for epoch in range(epochs_trained, epochs_trained + epochs):
             print("epoch: ", epoch)
             for i, batch in enumerate(loader):
                 imgs = batch['img'].type(torch.FloatTensor).permute(0, 3, 1, 2)  # from NHWC to NCHW
@@ -154,26 +137,32 @@ if __name__ == '__main__':
                 preds = torch.squeeze(preds, dim=1)
 
                 # # pridane pre logaritmovanie
-                # pred = torch.squeeze(torch.exp(pred), dim=0)
-                # pred_t = torch.log(pred + 2)
-                # depth_t = torch.log(depth + 2)
-                # loss = rmse_loss(pred_t, depth_t, mask, scale_invariant=False)
+                # preds = torch.squeeze(torch.exp(preds), dim=0)
+                # preds_t = torch.log(preds + 2)
+                # depths_t = torch.log(depths + 2)
+                # batch_loss = rmse_loss(preds_t, depths_t, masks, scale_invariant=scale_invariancy)
 
                 batch_loss = rmse_loss(preds, depths, masks, scale_invariant=scale_invariancy)
                 batch_loss = batch_loss / batch_size
 
-                print(batch_loss.item())
+                print(i, "/", len(loader), ": ", batch_loss.item())
+
                 loss_history.append(batch_loss.item())
 
                 batch_loss.backward()
                 optimizer.step()
+            epoch_mean_loss = np.mean(loss_history)
+            save_path = f'/content/saved_{epoch}_{epoch_mean_loss:.4f}_net_G.pth'
+            torch.save(model.netG.state_dict(), save_path)
 
     except KeyboardInterrupt:
         print('stopped training')
+    finally:
+        epochs_trained += len(loss_history)
 
     plt.plot(loss_history)
     plt.title('Training loss \n(scale {}invariant)'.format('' if scale_invariancy else 'non-'))
-    plt.xlabel('batch (size={})'.format(batch_size))
+    plt.xlabel('batch (size = {}, len(ds) = {})'.format(batch_size, len(ds)))
     plt.ylabel('RMSE loss')
     plt.show()
 

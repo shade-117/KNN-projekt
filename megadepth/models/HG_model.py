@@ -19,6 +19,11 @@ class HGModel(BaseModel):
         model = torch.nn.parallel.DataParallel(model, device_ids=[0])
         model_parameters = self.load_network(model, 'G', 'best_generalization')
         # model_parameters = self.load_network(model, 'G', 'saved')
+        # model_parameters = self.load_network(model, 'G', 'saved_1480.2093')
+        # model_parameters = self.load_network(model, 'G', 'saved_1457.3193')
+        # model_parameters = self.load_network(model, 'G', 'saved_1436.4768')
+        # model_parameters = self.load_network(model, 'G', 'saved_600batches_no-logs_lr2_by_100')
+        # model_parameters = self.load_network(model, 'G', 'saved_1.1111')
         model.load_state_dict(model_parameters)
         self.netG = model.cuda(0)
 

@@ -21,40 +21,6 @@ except ModuleNotFoundError:
     from train import rmse_loss
 
 
-def iter_few(ds):
-    cnt = 0
-    for _ in ds:
-        cnt += 1
-        if cnt % 10 == 0:
-            print(cnt)
-        if cnt == 120:
-            break
-
-
-def timing(f):
-    """Time a function execution - as a decorator or timing(foo)(args)
-
-    Taken from
-    https://stackoverflow.com/questions/1622943/timeit-versus-timing-decorator
-
-    :param f:
-    :return:
-    """
-
-    from functools import wraps
-    from time import time
-
-    @wraps(f)
-    def wrap(*args, **kwargs):
-        start = time()
-        result = f(*args, **kwargs)
-        end = time()
-        print(f'func:{f.__name__!r} args:[{args!r}, {kwargs!r}] \ntook: {end - start:2.4f} sec')
-        return result
-
-    return wrap
-
-
 if __name__ == '__main__':
     # working folder 'KNN-projekt' assumed
 
@@ -76,8 +42,6 @@ if __name__ == '__main__':
 
     # batch size and num_workers are chosen arbitrarily, try your own ideas
     loader = torch.utils.data.DataLoader(ds, batch_size=4, num_workers=4, collate_fn=ds.collate)
-
-    timing(iter_few)(loader)
 
     """
     100 batches * 4 samples, 4 workers => 18s, 

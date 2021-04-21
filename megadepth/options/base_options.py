@@ -40,7 +40,7 @@ class BaseOptions():
 
         self.initialized = True
 
-    def parse(self, checkpoints_path=''):  # added ='' to suppress warning -- check if OK
+    def parse(self, checkpoints_path='', quiet=False):  # added ='' to suppress warning -- check if OK
         if not self.initialized:
             self.initialize(checkpoints_path)
         self.opt = self.parser.parse_args()
@@ -55,10 +55,11 @@ class BaseOptions():
 
         args = vars(self.opt)
 
-        print('------------ Options -------------')
-        for k, v in sorted(args.items()):
-            print('%s: %s' % (str(k), str(v)))
-        print('-------------- End ----------------')
+        if not quiet:
+            print('------------ Options -------------')
+            for k, v in sorted(args.items()):
+                print('%s: %s' % (str(k), str(v)))
+            print('-------------- End ----------------')
 
         # save to the disk
         # expr_dir =  os.path.join(self.opt.checkpoints_dir, self.opt.name)

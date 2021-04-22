@@ -33,7 +33,7 @@ class GeoPoseDataset(torch.utils.data.Dataset):
         self.verbose = verbose
         self.img_paths = []
         self.depth_paths = []
-        self.mask_paths = []
+        # self.mask_paths = []
         self.transforms = transforms
         self.jpeg_reader = TurboJPEG()
 
@@ -46,16 +46,16 @@ class GeoPoseDataset(torch.utils.data.Dataset):
         for curr_dir in listed_data_dir:
             img_path = os.path.join(ds_dir, curr_dir, 'photo.jpeg')
             depth_path = os.path.join(ds_dir, curr_dir, 'distance_crop.pfm')
-            mask_path = os.path.join(ds_dir, curr_dir, 'pinhole_labels_crop.png')
+            # mask_path = os.path.join(ds_dir, curr_dir, 'pinhole_labels_crop.png')
 
             if not (os.path.isfile(img_path) and
-                    os.path.isfile(depth_path) and
-                    os.path.isfile(mask_path)):
+                    os.path.isfile(depth_path)):
+                # and os.path.isfile(mask_path)
                 continue
 
             self.img_paths.append(img_path)
             self.depth_paths.append(depth_path)
-            self.mask_paths.append(mask_path)
+            # self.mask_paths.append(mask_path)
 
         if len(self.img_paths) != len(self.depth_paths):
             print("image and depth lists length does not match {} x {}"
@@ -312,7 +312,7 @@ def rotate_images(ds_dir='datasets/geoPose3K_final_publish/', show_cv=False, sho
         os.chdir(old_cwd)
 
 
-def get_dataset_loaders(dataset_dir, batch_size=None, validation_split=.1):
+def get_dataset_loaders(dataset_dir, batch_size=None, workers=2, validation_split=.1):
     ds = GeoPoseDataset(ds_dir=dataset_dir, transforms=None, verbose=False)
 
     # split into training & validation
@@ -326,7 +326,7 @@ def get_dataset_loaders(dataset_dir, batch_size=None, validation_split=.1):
     train_sampler = SubsetRandomSampler(train_indices)
     val_sampler = SubsetRandomSampler(val_indices)
 
-    loader_kwargs = {'batch_size': batch_size, 'num_workers': 4, 'pin_memory': True}
+    loader_kwargs = {'batch_size': batch_size, 'num_workers': workers, 'pin_memory': True}
     train_loader = torch.utils.data.DataLoader(ds, sampler=train_sampler, **loader_kwargs)
     val_loader = torch.utils.data.DataLoader(ds, sampler=val_sampler, **loader_kwargs)
     return train_loader, val_loader

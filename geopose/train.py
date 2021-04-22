@@ -29,6 +29,7 @@ if __name__ == '__main__':
     """
     try:
         from IPython import get_ipython
+
         running_in_colab = 'google.colab' in str(get_ipython())
     except:
         running_in_colab = False
@@ -73,14 +74,13 @@ if __name__ == '__main__':
     scale_invariancy = False
     stop_training = False  # break training loop flag
 
-    # with torch.no_grad():  # enable when not training to evaluate loss only
     for epoch in range(epochs_trained, epochs_trained + epochs):
 
         model.netG.train()
         print("epoch:", epoch)
         try:
+            start = time.time()
             for i, batch in enumerate(train_loader):
-                start = time.time()
 
                 # zero gradient
                 for param in model.netG.parameters():
@@ -118,7 +118,9 @@ if __name__ == '__main__':
                 # optimizer.step()
 
                 print("\t{:>4}/{} : d={:<9.2f} g={:<9.2f} t={:.2f}s "
-                      .format(i + 1, len(train_loader), 0, 0, time.time() - start))
+                      .format(i + 1, len(train_loader), batch_loss.item(), grad_loss.item(), time.time() - start))
+                start = time.time()
+
 
         except KeyboardInterrupt:
             print('stopped training')
@@ -133,8 +135,8 @@ if __name__ == '__main__':
         model.netG.eval()
         with torch.no_grad():
             print('val:')
+            start = time.time()
             for i, batch in enumerate(val_loader):
-                start = time.time()
 
                 imgs = batch['img'].type(torch.FloatTensor).permute(0, 3, 1, 2)  # from NHWC to NCHW
 
@@ -153,6 +155,7 @@ if __name__ == '__main__':
                       .format(i + 1, len(val_loader), batch_loss.item(), grad_loss.item(), time.time() - start))
 
                 val_loss_history.append(batch_loss.item())
+                start = time.time()
 
         if stop_training:
             break

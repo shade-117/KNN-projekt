@@ -14,7 +14,7 @@ from torchvision import transforms
 from skimage.transform import resize
 
 try:
-    from geopose.train import rmse_loss
+    from geopose.losses import rmse_loss
     from geopose.dataset import GeoPoseDataset, clear_dataset_dir, rotate_images
 except ModuleNotFoundError:
     from dataset import GeoPoseDataset, clear_dataset_dir, rotate_images

@@ -13,6 +13,7 @@ import imageio  # read PFM
 import matplotlib.pyplot as plt
 import cv2 as cv
 from skimage.transform import resize
+from torch.utils.data import SubsetRandomSampler
 from torchvision import transforms
 from scipy.ndimage import rotate
 from turbojpeg import TurboJPEG
@@ -311,4 +312,21 @@ def rotate_images(ds_dir='datasets/geoPose3K_final_publish/', show_cv=False, sho
         os.chdir(old_cwd)
 
 
+def get_dataset_loaders(dataset_dir, batch_size=None, validation_split=.1):
+    ds = GeoPoseDataset(ds_dir=dataset_dir, transforms=None, verbose=False)
 
+    # split into training & validation
+    # todo test set
+    dataset_size = len(ds)
+    indices = np.arange(dataset_size)
+    np.random.shuffle(indices)
+    split = int(np.floor(validation_split * dataset_size))
+    train_indices, val_indices = indices[split:], indices[:split]
+
+    train_sampler = SubsetRandomSampler(train_indices)
+    val_sampler = SubsetRandomSampler(val_indices)
+
+    loader_kwargs = {'batch_size': batch_size, 'num_workers': 4, 'pin_memory': True}
+    train_loader = torch.utils.data.DataLoader(ds, sampler=train_sampler, **loader_kwargs)
+    val_loader = torch.utils.data.DataLoader(ds, sampler=val_sampler, **loader_kwargs)
+    return train_loader, val_loader

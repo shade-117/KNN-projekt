@@ -45,7 +45,7 @@ if __name__ == '__main__':
     # rotate_images(ds_dir)
 
     """ Dataset """
-    batch_size = 4 if running_in_colab else 1
+    batch_size = 4 if running_in_colab else 2
     train_loader, val_loader = get_dataset_loaders(ds_dir, batch_size)
 
     """ Model """
@@ -60,6 +60,7 @@ if __name__ == '__main__':
     """ Training """
     # torch.autograd.set_detect_anomaly(True)  # debugging
     torch.backends.cudnn.benchmark = True  # better performance
+    scaler = torch.cuda.amp.GradScaler()
 
     optimizer = torch.optim.Adam(model.netG.parameters(), lr=opt.lr * 100, betas=(opt.beta1, 0.999))
     epochs = 50
@@ -85,34 +86,39 @@ if __name__ == '__main__':
                 for param in model.netG.parameters():
                     param.grad = None
 
-                imgs = batch['img'].type(torch.FloatTensor).permute(0, 3, 1, 2)  # from NHWC to NCHW
-                # todo imgs transformations could be a part of transforms
+                with torch.cuda.amp.autocast():
+                    imgs = batch['img'].type(torch.FloatTensor).permute(0, 3, 1, 2)  # from NHWC to NCHW
+                    # todo imgs transformations could be a part of transforms
 
-                depths = batch['depth'].cuda()
-                masks = batch['mask'].cuda()
-                paths = batch['path']
+                    depths = batch['depth'].cuda()
+                    masks = batch['mask'].cuda()
+                    paths = batch['path']
 
-                # batch prediction
-                preds = model.netG.forward(imgs)
-                preds = torch.squeeze(preds, dim=1)
+                    # batch prediction
+                    preds = model.netG.forward(imgs)
+                    preds = torch.squeeze(preds, dim=1)
 
-                # # pridane pre logaritmovanie
-                # preds = torch.squeeze(torch.exp(preds), dim=0)
-                # preds_t = torch.log(preds + 2)
-                # depths_t = torch.log(depths + 2)
-                # batch_loss = rmse_loss(preds_t, depths_t, masks, scale_invariant=scale_invariancy)
+                    # # pridane pre logaritmovanie
+                    # preds = torch.squeeze(torch.exp(preds), dim=0)
+                    # preds_t = torch.log(preds + 2)
+                    # depths_t = torch.log(depths + 2)
+                    # batch_loss = rmse_loss(preds_t, depths_t, masks, scale_invariant=scale_invariancy)
 
-                data_loss = rmse_loss(preds, depths, masks, scale_invariant=scale_invariancy)
-                grad_loss = gradient_loss(preds, depths, masks)
-                batch_loss = (data_loss + 0.5 * grad_loss) / batch_size
+                    data_loss = rmse_loss(preds, depths, masks, scale_invariant=scale_invariancy)
+                    grad_loss = gradient_loss(preds, depths, masks)
+                    batch_loss = (data_loss + 0.5 * grad_loss) / batch_size
 
                 train_loss_history.append(batch_loss.item())
 
-                batch_loss.backward()
-                optimizer.step()
+                scaler.scale(batch_loss).backward()
+                scaler.step(optimizer)
+                scaler.update()
+
+                # batch_loss.backward()
+                # optimizer.step()
 
                 print("\t{:>4}/{} : d={:<9.2f} g={:<9.2f} t={:.2f}s "
-                      .format(i + 1, len(train_loader), batch_loss.item(), grad_loss.item(), time.time() - start))
+                      .format(i + 1, len(train_loader), 0, 0, time.time() - start))
 
         except KeyboardInterrupt:
             print('stopped training')
@@ -158,7 +164,7 @@ if __name__ == '__main__':
     plt.plot(train_loss_history)
     plt.plot(running_mean(train_loss_history, 100, pad_start=True))
     plt.title('Training loss \n(scale {}invariant)'.format('' if scale_invariancy else 'non-'))
-    plt.xlabel('batch (size = {}, batches_total = {})'.format(batch_size, len(train_loader)))
+    plt.xlabel('batch (size = {}, dataset_size = {})'.format(batch_size, len(train_loader)))
     plt.ylabel('RMSE loss')
     plt.legend(['train', 'train-mean'])
     plt.show()

@@ -99,7 +99,7 @@ if __name__ == '__main__':
         path = sample['path']
 
         # pretend noisier prediction is GT
-        depth_fake_gt = depth.copy() - 10 + np.random.random(np.prod(depth.shape)).reshape((depth.shape))
+        depth_fake_gt = depth.copy() - 10 + np.random.random(np.prod(depth.shape)).reshape(depth.shape)
 
         # mask = np.zeros_like(depth) + 1  # ones-mask
 

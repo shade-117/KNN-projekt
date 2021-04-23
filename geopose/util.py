@@ -43,13 +43,16 @@ def timing(f):
     return wrap
 
 
-# Demo: https://colab.research.google.com/drive/1TVjaB7kJMN-jmhrryJOZ7Lggp6Xri1l0?usp=sharing
-# Returns local mean value for target pixel
-# k - local area size --> filter_size = 1 + 2 * k
-# image - input image
-# row, col - index of target pixel probably with nan
-# skips all nan pixels from area
-def local_mean(k, image, row, col):
+def inpaint_nan(k, image, row, col):
+    """
+    Demo: https://colab.research.google.com/drive/1TVjaB7kJMN-jmhrryJOZ7Lggp6Xri1l0?usp=sharing
+
+    :param row: target nan pixel row
+    :param col: target nan pixel column
+    :param k: local area size --> filter_size = 1 + 2 * k
+    :param image: input image
+    :return: local nanmean value for target pixel
+    """
     pixel_sum = 0
     pixel_count = 0
     filter_size = 1 + 2 * k
@@ -67,3 +70,27 @@ def local_mean(k, image, row, col):
                     pixel_sum += pixel
                     pixel_count += 1
     return pixel_sum / pixel_count
+
+
+def inpaint_nan_numpy(k, image, row, col):
+    """
+    Demo: https://colab.research.google.com/drive/1TVjaB7kJMN-jmhrryJOZ7Lggp6Xri1l0?usp=sharing
+
+    todo make it work on a connected component (blob) instead of a single nan pixel
+
+    :param row: target nan pixel row
+    :param col: target nan pixel column
+    :param k: local area size --> filter_size = 1 + 2 * k
+    :param image: input image
+    :return: local nanmean value for target pixel
+    """
+
+    row = max(row, k)
+    row = min(row, image.shape[1] - k - 1)
+
+    col = max(col, k)
+    col = min(col, image.shape[1] - k - 1)
+
+    # plt.imshow(image[row - k:row + k + 1, col - k: col + k + 1].copy())
+    # plt.show()
+    return np.nanmean(image[row - k:row + k + 1, col - k: col + k + 1])

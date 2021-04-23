@@ -4,7 +4,6 @@ import shutil
 import gzip
 from collections.abc import Iterable
 import os
-import pathlib
 
 # external
 import numpy as np
@@ -14,10 +13,11 @@ import matplotlib.pyplot as plt
 import cv2 as cv
 from skimage.transform import resize
 from torch.utils.data import SubsetRandomSampler
-from torchvision import transforms
 from scipy.ndimage import rotate
 from turbojpeg import TurboJPEG
-from util import local_mean
+
+# local
+from geopose.util import inpaint_nan
 
 
 imageio.plugins.freeimage.download()  # download Freelibs for reading PFM files
@@ -69,7 +69,10 @@ class GeoPoseDataset(torch.utils.data.Dataset):
         return len(self.img_paths)
 
     def __getitem__(self, idx):
+        """Get single dataset sample as a dict
 
+        Currently uses GT depth as a sky segmentation mask
+        """
         # allow for slicing -> dataset[0:10]
         if isinstance(idx, slice):
             start, stop, step = idx.indices(len(self))
@@ -91,7 +94,7 @@ class GeoPoseDataset(torch.utils.data.Dataset):
         # remove NaN from depth image with local mean
         indices = np.argwhere(np.isnan(depth_img))
         for ind_nan in indices:
-            depth_img[ind_nan[0], ind_nan[1]] = local_mean(2, depth_img, ind_nan[0], ind_nan[1])
+            depth_img[ind_nan[0], ind_nan[1]] = inpaint_nan(2, depth_img, ind_nan[0], ind_nan[1])
 
         if self.verbose and np.sum(nans) > 0:
             print('NaN x{} in {}'.format(np.sum(nans), self.depth_paths[idx]))
@@ -105,7 +108,7 @@ class GeoPoseDataset(torch.utils.data.Dataset):
         # mask_img = imageio.imread(self.mask_paths[idx], format='png')  # (WxHxC)
         # mask_img = mask_img[:, :, :3].sum(axis=2)  # ignore alpha channel, merge channels
 
-        # target_size = base_img.shape[0], base_img.shape[1]
+        # todo do resizing in torchvision.transforms
         base_img = resize(base_img, self.target_size)
         depth_img = resize(depth_img, self.target_size)
         # mask_img = resize(mask_img, self.target_size)
@@ -138,13 +141,14 @@ class GeoPoseDataset(torch.utils.data.Dataset):
         return tuple(zip(*data))
 
 
-def clear_dataset_dir(ds_dir, resize_dim=None):
+def clear_dataset_dir(ds_dir):
     """
     Remove unnecessary files from dataset
     Rename ground-truth photo names to jpeg
-    Crop images to dim x dim, if it is set
 
-    Destructive, run only once
+    Mark directory with 'is_cleared.txt'
+
+    Warning - destructive operation
     """
 
     old_cwd = os.getcwd()
@@ -247,7 +251,12 @@ def copy_images_out(ds_dir='datasets/geoPose3K_final_publish/', dir_to='../geoPo
 
 
 def rotate_images(ds_dir='datasets/geoPose3K_final_publish/', show_cv=False, show_plt=False):
-    """Fix wrong image rotations"""
+    """Fix wrong image rotations
+
+    Mark directory with 'is_rotated.txt'
+
+    Warning - destructive operation
+    """
 
     # This tells the images current rotation. Apply reverse rotation to fix them.
     # If -90, then sky is on the left. Apply rot(-(-90)) to fix.
@@ -315,7 +324,7 @@ def rotate_images(ds_dir='datasets/geoPose3K_final_publish/', show_cv=False, sho
         os.chdir(old_cwd)
 
 
-def get_dataset_loaders(dataset_dir, batch_size=None, workers=2, validation_split=.1):
+def get_dataset_loaders(dataset_dir, batch_size=None, workers=4, validation_split=.1):
     ds = GeoPoseDataset(ds_dir=dataset_dir, transforms=None, verbose=False)
 
     # split into training & validation

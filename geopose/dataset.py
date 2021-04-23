@@ -17,6 +17,7 @@ from torch.utils.data import SubsetRandomSampler
 from torchvision import transforms
 from scipy.ndimage import rotate
 from turbojpeg import TurboJPEG
+from util import local_mean
 
 
 imageio.plugins.freeimage.download()  # download Freelibs for reading PFM files
@@ -85,7 +86,12 @@ class GeoPoseDataset(torch.utils.data.Dataset):
 
         # remove NaN from depth image
         nans = np.isnan(depth_img)
-        depth_img[nans] = np.nanmean(depth_img)
+        # depth_img[nans] = np.nanmean(depth_img)
+
+        # remove NaN from depth image with local mean
+        indices = np.argwhere(np.isnan(depth_img))
+        for ind_nan in indices:
+            depth_img[ind_nan[0], ind_nan[1]] = local_mean(2, depth_img, ind_nan[0], ind_nan[1])
 
         if self.verbose and np.sum(nans) > 0:
             print('NaN x{} in {}'.format(np.sum(nans), self.depth_paths[idx]))

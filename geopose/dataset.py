@@ -84,14 +84,11 @@ class GeoPoseDataset(torch.utils.data.Dataset):
         depth_img = np.flipud(np.array(depth_img)).copy()
 
         # remove NaN from depth image
-        indices = np.argwhere(np.isnan(depth_img))
-        mean_depth = np.nanmean(depth_img)
-        for ind_nan in indices:
-            # stupid indexing but it works
-            depth_img[ind_nan[0], ind_nan[1]] = mean_depth
+        nans = np.isnan(depth_img)
+        depth_img[nans] = np.nanmean(depth_img)
 
-        if self.verbose and len(indices) > 0:
-            print('NaN x{} in {}'.format(len(indices), self.img_paths[idx]))
+        if self.verbose and np.sum(nans) > 0:
+            print('NaN x{} in {}'.format(np.sum(nans), self.depth_paths[idx]))
 
         # input image
         with open(self.img_paths[idx], 'rb') as photo_jpeg:

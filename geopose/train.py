@@ -47,7 +47,7 @@ if __name__ == '__main__':
 
     """ Dataset """
     batch_size = 4 if running_in_colab else 2
-    train_loader, val_loader = get_dataset_loaders(ds_dir, batch_size)
+    train_loader, val_loader = get_dataset_loaders(ds_dir, batch_size, workers=4)
 
     """ Model """
     megadepth_checkpoints_path = './megadepth/checkpoints/'
@@ -137,7 +137,6 @@ if __name__ == '__main__':
             print('val:')
             start = time.time()
             for i, batch in enumerate(val_loader):
-
                 imgs = batch['img'].type(torch.FloatTensor).permute(0, 3, 1, 2)  # from NHWC to NCHW
 
                 depths = batch['depth'].cuda()
@@ -167,7 +166,7 @@ if __name__ == '__main__':
     plt.plot(train_loss_history)
     plt.plot(running_mean(train_loss_history, 100, pad_start=True))
     plt.title('Training loss \n(scale {}invariant)'.format('' if scale_invariancy else 'non-'))
-    plt.xlabel('batch (size = {}, dataset_size = {})'.format(batch_size, len(train_loader)))
+    plt.xlabel('batch (size = {}, dataset_batches = {})'.format(batch_size, len(train_loader)))
     plt.ylabel('RMSE loss')
     plt.legend(['train', 'train-mean'])
     plt.show()

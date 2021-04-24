@@ -12,6 +12,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
+from torch import nn
+import torch.nn.functional as F
+from torch.utils.data import DataLoader, random_split
+from torchvision import transforms
+import pytorch_lightning as pl
+
 # fix for local import problems - add all local directories
 sys_path_extension = [os.getcwd()]  # + [d for d in os.listdir() if os.path.isdir(d)]
 sys.path.extend(sys_path_extension)
@@ -155,113 +161,117 @@ if __name__ == '__main__':
         # fix for colab interpreter arguments
         opt = TrainOptions().parse(quiet=True)  # set CUDA_VISIBLE_DEVICES before import torch
     hourglass = HourglassModel(opt)
-
     """ Training """
     # torch.autograd.set_detect_anomaly(True)  # debugging
     torch.backends.cudnn.enabled = True
     torch.backends.cudnn.benchmark = True  # better performance
-    scaler = torch.cuda.amp.GradScaler()
 
-    optimizer = torch.optim.Adam(hourglass.model.parameters(), lr=opt.lr * 100, betas=(opt.beta1, 0.999))
-    epochs = 20
+    trainer = pl.Trainer(gpus=1, auto_scale_batch_size=True, precision=16)  # gpus=1, precision=16
+    trainer.fit(hourglass, train_loader, val_loader)
 
-    epochs_trained = 0
-    train_loss_history = []  # combined loss
-    val_loss_data_si_history = []
-    val_loss_data_history = []
-    val_loss_grad_history = []
-    scale_invariancy = False
-    stop_training = False  # break training loop flag
-    quiet = False
+    if False:
+        scaler = torch.cuda.amp.GradScaler()
 
-    for epoch in range(epochs_trained, epochs_trained + epochs):
+        optimizer = torch.optim.Adam(hourglass.model.parameters(), lr=opt.lr * 100, betas=(opt.beta1, 0.999))
+        epochs = 20
 
-        epoch_start = time.time()
-        hourglass.model.train()
-        print("epoch:", epoch)
-        try:
-            for i, batch in enumerate(train_loader):
-                # zero gradient
-                for param in hourglass.model.parameters():
-                    param.grad = None
+        epochs_trained = 0
+        train_loss_history = []  # combined loss
+        val_loss_data_si_history = []
+        val_loss_data_history = []
+        val_loss_grad_history = []
+        scale_invariancy = False
+        stop_training = False  # break training loop flag
+        quiet = False
 
-                with torch.cuda.amp.autocast():
+        for epoch in range(epochs_trained, epochs_trained + epochs):
+
+            epoch_start = time.time()
+            hourglass.model.train()
+            print("epoch:", epoch)
+            try:
+                for i, batch in enumerate(train_loader):
+                    # zero gradient
+                    for param in hourglass.model.parameters():
+                        param.grad = None
+
+                    with torch.cuda.amp.autocast():
+                        imgs = batch['img'].type(torch.FloatTensor).permute(0, 3, 1, 2)  # from NHWC to NCHW
+                        # todo imgs transformations could be a part of transforms
+
+                        depths = batch['depth'].cuda()
+                        masks = batch['mask'].cuda()
+                        paths = batch['path']
+
+                        # batch prediction
+                        preds = hourglass.model.forward(imgs)
+                        preds = torch.squeeze(preds, dim=1)
+
+                        # # pridane pre logaritmovanie
+                        # preds = torch.squeeze(torch.exp(preds), dim=0)
+                        # preds_t = torch.log(preds + 2)
+                        # depths_t = torch.log(depths + 2)
+                        # batch_loss = rmse_loss(preds_t, depths_t, masks, scale_invariant=scale_invariancy)
+
+                        data_loss = rmse_loss(preds, depths, masks, scale_invariant=scale_invariancy)
+                        grad_loss = gradient_loss(preds, depths, masks)
+                        batch_loss = (data_loss + 0.5 * grad_loss)
+
+                    train_loss_history.append(batch_loss.item())
+
+                    scaler.scale(batch_loss).backward()
+                    scaler.step(optimizer)
+                    scaler.update()
+
+                    if not quiet:
+                        print("\t{:>4}/{} : d={:<9.2f} g={:<9.2f} t={:.2f}s/sample "
+                              .format(i + 1, len(train_loader), batch_loss.item(), grad_loss.item(),
+                                      (time.time() - epoch_start) / ((i + 1) * batch_size)))
+
+            except KeyboardInterrupt:
+                print('stopped training')
+                stop_training = True
+                # stops after evaluating on validation set
+
+            """Save weights and loss plot"""
+            save_weights(hourglass.model, epoch, train_loss_history, outputs_dir)
+            plot_training_loss(train_loss_history)
+
+            """Validation set evaluation"""
+            hourglass.model.eval()
+            with torch.no_grad():
+                if not quiet:
+                    print('val:')
+                batch_start = time.time()
+                for i, batch in enumerate(val_loader):
                     imgs = batch['img'].type(torch.FloatTensor).permute(0, 3, 1, 2)  # from NHWC to NCHW
-                    # todo imgs transformations could be a part of transforms
 
                     depths = batch['depth'].cuda()
                     masks = batch['mask'].cuda()
                     paths = batch['path']
 
-                    # batch prediction
                     preds = hourglass.model.forward(imgs)
                     preds = torch.squeeze(preds, dim=1)
 
-                    # # pridane pre logaritmovanie
-                    # preds = torch.squeeze(torch.exp(preds), dim=0)
-                    # preds_t = torch.log(preds + 2)
-                    # depths_t = torch.log(depths + 2)
-                    # batch_loss = rmse_loss(preds_t, depths_t, masks, scale_invariant=scale_invariancy)
-
-                    data_loss = rmse_loss(preds, depths, masks, scale_invariant=scale_invariancy)
+                    data_loss = rmse_loss(preds, depths, masks, scale_invariant=False)
+                    data_si_loss = rmse_loss(preds, depths, masks, scale_invariant=True)
                     grad_loss = gradient_loss(preds, depths, masks)
                     batch_loss = (data_loss + 0.5 * grad_loss)
 
-                train_loss_history.append(batch_loss.item())
+                    if not quiet:
+                        print("\t{:>4}/{} : d={:<9.2f} g={:<9.2f} t={:.2f}s "
+                              .format(i + 1, len(val_loader), batch_loss.item(), grad_loss.item(),
+                                      time.time() - batch_start))
 
-                scaler.scale(batch_loss).backward()
-                scaler.step(optimizer)
-                scaler.update()
+                    val_loss_data_history.append(data_loss.item())
+                    val_loss_data_si_history.append(data_si_loss.item())
+                    val_loss_grad_history.append(grad_loss.item())
+                    batch_start = time.time()
 
-                if not quiet:
-                    print("\t{:>4}/{} : d={:<9.2f} g={:<9.2f} t={:.2f}s/sample "
-                          .format(i + 1, len(train_loader), batch_loss.item(), grad_loss.item(),
-                                  (time.time() - epoch_start) / ((i + 1) * batch_size)))
+            plot_val_losses(val_loss_data_history, val_loss_data_si_history, val_loss_grad_history)
 
-        except KeyboardInterrupt:
-            print('stopped training')
-            stop_training = True
-            # stops after evaluating on validation set
+            if stop_training:
+                break
 
-        """Save weights and loss plot"""
-        save_weights(hourglass.model, epoch, train_loss_history, outputs_dir)
-        plot_training_loss(train_loss_history)
-
-        """Validation set evaluation"""
-        hourglass.model.eval()
-        with torch.no_grad():
-            if not quiet:
-                print('val:')
-            batch_start = time.time()
-            for i, batch in enumerate(val_loader):
-                imgs = batch['img'].type(torch.FloatTensor).permute(0, 3, 1, 2)  # from NHWC to NCHW
-
-                depths = batch['depth'].cuda()
-                masks = batch['mask'].cuda()
-                paths = batch['path']
-
-                preds = hourglass.model.forward(imgs)
-                preds = torch.squeeze(preds, dim=1)
-
-                data_loss = rmse_loss(preds, depths, masks, scale_invariant=False)
-                data_si_loss = rmse_loss(preds, depths, masks, scale_invariant=True)
-                grad_loss = gradient_loss(preds, depths, masks)
-                batch_loss = (data_loss + 0.5 * grad_loss)
-
-                if not quiet:
-                    print("\t{:>4}/{} : d={:<9.2f} g={:<9.2f} t={:.2f}s "
-                          .format(i + 1, len(val_loader), batch_loss.item(), grad_loss.item(),
-                                  time.time() - batch_start))
-
-                val_loss_data_history.append(data_loss.item())
-                val_loss_data_si_history.append(data_si_loss.item())
-                val_loss_grad_history.append(grad_loss.item())
-                batch_start = time.time()
-
-        plot_val_losses(val_loss_data_history, val_loss_data_si_history, val_loss_grad_history)
-
-        if stop_training:
-            break
-
-    epochs_trained += floor(len(train_loss_history) / len(train_loader.dataset))
+        epochs_trained += floor(len(train_loss_history) / len(train_loader.dataset))
 

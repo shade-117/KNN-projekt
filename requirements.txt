@@ -8,6 +8,7 @@ scipy~=1.6.2
 # pytorch~=1.8.1
 torchvision~=0.9.1
 opencv-python~=4.5.1.48
+pytorch-lightning~=1.2
 
 yacs~=0.1.8
 ipython~=7.22.0

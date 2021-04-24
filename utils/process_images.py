@@ -47,7 +47,7 @@ def apply_sky_mask(pred, sky_mask):
 
 def megadepth_predict(model, input_img):
     input_images = Variable(input_img.cuda())
-    pred_log_depth = model.netG.forward(input_images)
+    pred_log_depth = model.hg_model.forward(input_images)
     pred_log_depth = torch.squeeze(pred_log_depth)
     pred_depth = torch.exp(pred_log_depth)
     pred_depth = pred_depth.data.cpu().numpy()

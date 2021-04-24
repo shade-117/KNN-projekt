@@ -3,19 +3,19 @@ import math
 import numpy as np
 
 
-def running_mean(arr, n, pad_start=False):
+def running_mean(arr, window_size, pad_start=False):
     """Get running mean of `arr` over past `n` elements
 
     inspired by:
     https://stackoverflow.com/questions/13728392/moving-average-or-running-mean
     """
-    if n > len(arr):
-        n = len(arr)
+    if window_size > len(arr):
+        window_size = len(arr)
 
     cumsum = np.cumsum(np.insert(arr, 0, 0))
-    res = (cumsum[n:] - cumsum[:-n]) / float(n)
+    res = (cumsum[window_size:] - cumsum[:-window_size]) / float(window_size)
     if pad_start:
-        res = np.r_[np.repeat(res[0], n), res]
+        res = np.r_[np.repeat(res[0], window_size), res]
     return res
 
 

@@ -1,24 +1,24 @@
 import sys
-
-from megadepth.models.models import create_model
-import scipy.io
-import numpy as np
-from skimage import io
+import time
 import csv
 import os
 
-from megadepth.options.eval_options import EvalOptions
-from megadepth.options.train_options import TrainOptions
-from semseg.models.models import ModelBuilder, SegmentationModule
-from semseg.utils import colorEncode
-import torch
-import geopose.dataset as dataset
 import matplotlib.pyplot as plt
+import scipy.io
+import numpy as np
+from skimage import io
 from skimage.transform import resize
+import torch
 import torchvision.transforms
 from torch.autograd import Variable
-import time
 from torchvision import transforms
+
+from megadepth.options.eval_options import EvalOptions
+from megadepth.options.train_options import TrainOptions
+from megadepth.models.hourglass_model import HourglassModel
+from semseg.models.models import ModelBuilder, SegmentationModule
+from semseg.utils import colorEncode
+import geopose.dataset as dataset
 
 from utils.process_images import get_sky_mask, transform_image_for_megadepth, megadepth_predict, \
     transform_image_for_semseg, semseg_predict, apply_sky_mask
@@ -28,7 +28,7 @@ from utils.semseg import visualize_result
 def load_models():
     megadepth_checkpoints_path = './megadepth/checkpoints/'
     opt = EvalOptions().parse(megadepth_checkpoints_path)
-    model = create_model(opt)
+    model = HourglassModel(opt)
     # input_height = 384
     # input_width = 512
     model.switch_to_eval()
@@ -93,7 +93,7 @@ if __name__ == '__main__':
         img = torch.unsqueeze(input_image, dim=0)
 
         # prediction for single sample
-        pred = megadepth_model.netG.forward(img).cpu()
+        pred = megadepth_model.hg_model.forward(img).cpu()
         # megadepth_pred = torch.squeeze(torch.exp(pred), dim=0)
         megadepth_pred = torch.squeeze(pred, dim=0)
 

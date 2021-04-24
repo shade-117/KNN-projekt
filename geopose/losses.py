@@ -2,53 +2,58 @@ import torch
 
 
 def rmse_loss(pred, gt, mask=None, scale_invariant=True):
-    # from rmse_error_main.py
-    assert gt.shape == pred.shape, \
-        'Loss tensor shapes invalid: {} x {}'.format(gt.shape, pred.shape)
-
     if mask is None:
         mask = torch.zeros(pred.shape) + 1
 
-    n = torch.sum(mask)
+    n = mask.sum(dim=2).sum(dim=1)
 
     diff = pred - gt
     diff = torch.mul(diff, mask)
 
-    s1 = torch.sum(torch.pow(diff, 2)) / n
+    s1 = torch.pow(diff, 2).sum(dim=2).sum(dim=1) / n
 
     if scale_invariant:
-        s2 = torch.pow(torch.sum(diff), 2) / (n * n)
+        s2 = torch.pow(diff.sum(dim=2).sum(dim=1), 2) / (n * n)
         data_loss = s1 - s2
     else:
         data_loss = s1
 
     data_loss = torch.sqrt(data_loss)
 
-    return data_loss
+    return data_loss.mean()
 
 
-def gradient_loss(pred, gt, mask):
+def gradient_loss(pred, gt, mask=None):
+    """Gradient loss
+
+    Forces the output relief/texture to resemble output
+    Calculated at multiple scales
+
+    """
     # adapted from:
     # https://github.com/ArnaudFickinger/MegaDepth-Training/blob/master/models/networks.py#L231
     # ^ origin of different targets_1['mask_X']
     # https://github.com/ArnaudFickinger/MegaDepth-Training/blob/master/data/image_folder.py#L268
 
-    def gradient_loss_inner(pred, gt, mask):
-        n = torch.sum(mask)
-        diff = pred - gt
+    def gradient_loss_inner(p, g, mask):
+        n = mask.sum(dim=2).sum(dim=1)
+        diff = p - g
         diff = torch.mul(diff, mask)
 
-        v_gradient = torch.abs(diff[0:-2, :] - diff[2:, :])
-        v_mask = torch.mul(mask[0:-2, :], mask[2:, :])
+        v_gradient = torch.abs(diff[:, 0:-2, :] - diff[:, 2:, :])
+        v_mask = torch.mul(mask[:, 0:-2, :], mask[:, 2:, :])
         v_gradient = torch.mul(v_gradient, v_mask)
 
-        h_gradient = torch.abs(diff[:, 0:-2] - diff[:, 2:])
-        h_mask = torch.mul(mask[:, 0:-2], mask[:, 2:])
+        h_gradient = torch.abs(diff[:, :, 0:-2] - diff[:, :, 2:])
+        h_mask = torch.mul(mask[:, :, 0:-2], mask[:, :, 2:])
         h_gradient = torch.mul(h_gradient, h_mask)
 
-        loss = torch.sum(h_gradient) + torch.sum(v_gradient)
+        loss = h_gradient.sum(dim=2).sum(dim=1) + v_gradient.sum(dim=2).sum(dim=1)   # todo test axes/dim
         loss = loss / n
         return loss
+
+    if mask is None:
+        mask = torch.zeros(pred.shape) + 1
 
     pred_div2 = pred[:, ::2, ::2]
     pred_div4 = pred_div2[:, ::2, ::2]
@@ -69,4 +74,4 @@ def gradient_loss(pred, gt, mask):
     loss += gradient_loss_inner(pred_div4, gt_div4, mask_div4)
     loss += gradient_loss_inner(pred_div8, gt_div8, mask_div8)
 
-    return loss
+    return loss.mean()

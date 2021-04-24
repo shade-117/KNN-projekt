@@ -13,7 +13,7 @@ from torch.autograd import Variable
 
 # local
 from options.train_options import TrainOptions
-from models.models import create_model
+from models.hourglass_model import HourglassModel
 from data.data_loader import CreateDataLoader
 
 # broken local imports
@@ -44,7 +44,7 @@ _isTrain = False
 batch_size = 32
 num_iterations_L = dataset_size_l / batch_size
 num_iterations_P = dataset_size_p / batch_size
-model = create_model(opt)  # , _isTrain  # function only takes 1 param
+model = HourglassModel(opt)  # , _isTrain  # function only takes 1 param
 model.switch_to_train()
 
 best_loss = 100
@@ -72,23 +72,19 @@ for epoch in range(0, 20):
     # landscape 
     for i, data in enumerate(dataset_l):
         total_iteration = total_iteration + 1
-        # print('L epoch %d, iteration %d, best_loss %f num_iterations %d best_epoch %d' % (
-        # epoch, i, best_loss, num_iterations_L, best_epoch))
         stacked_img = data['img_1']
         targets = data['target_1']
         is_DIW = False
-        model.set_input(stacked_img, targets, is_DIW)
-        model.optimize_parameters(epoch)
+        # model.set_input(stacked_img, targets, is_DIW)  # warning: unexpected argument
+        # model.optimize_parameters(epoch)
 
     # portrait 
     for i, data in enumerate(dataset_p):
         total_iteration = total_iteration + 1
-        # print('P epoch %d, iteration %d, best_loss %f num_iterations %d best_epoch %d' % (
-        #       epoch, i, best_loss, num_iterations_P, best_epoch))
         stacked_img = data['img_1']
         targets = data['target_1']
         is_DIW = False
-        model.set_input(stacked_img, targets, is_DIW)
-        model.optimize_parameters(epoch)
+        # model.set_input(stacked_img, targets, is_DIW)  # warning: unexpected argument
+        # model.optimize_parameters(epoch)
 
 print("We are done")

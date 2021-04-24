@@ -16,14 +16,14 @@ from torch.autograd import Variable
 
 # local
 from options.train_options import TrainOptions
-from models.models import create_model
+from models.hourglass_model import HourglassModel
 from semseg.models.models import ModelBuilder, SegmentationModule
 from semseg.utils import colorEncode
 
 img_path = 'image.jpg'
 megadepth_checkpoints_path = './checkpoints/'
 opt = TrainOptions().parse(megadepth_checkpoints_path)  # set CUDA_VISIBLE_DEVICES before import torch
-model = create_model(opt)
+model = HourglassModel(opt)
 
 input_height = 384
 input_width = 512
@@ -120,7 +120,7 @@ def test_simple(model):
     visualize_result(img_original, pred, index=2)
 
     input_images = Variable(input_img.cuda())
-    pred_log_depth = model.netG.forward(input_images)
+    pred_log_depth = model.forward(input_images)  # untested: changed from `model.hg_model.forward(input_images)`
     pred_log_depth = torch.squeeze(pred_log_depth)
 
     pred_depth = torch.exp(pred_log_depth)

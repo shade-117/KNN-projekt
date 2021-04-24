@@ -6,7 +6,7 @@ from options.train_options import TrainOptions
 
 opt = TrainOptions().parse()  # set CUDA_VISIBLE_DEVICES before import torch
 from data.data_loader import CreateDataLoader_TEST
-from models.models import create_model
+from megadepth.models.hourglass_model import HourglassModel
 
 dataset_root = "/phoenix/S6/zl548/"
 test_list_dir_l = dataset_root + '/MegaDpeth_code/test_list/landscape/'
@@ -25,7 +25,7 @@ test_dataset_p = test_data_loader_p.load_data()
 test_dataset_size_p = len(test_data_loader_p)
 print('========================= test P images = %d' % test_dataset_size_p)
 
-model = create_model(opt)
+model = HourglassModel(opt)
 
 batch_size = 32
 diw_index = 0
@@ -49,7 +49,7 @@ def test_SDR(model):
     for i, data in enumerate(test_dataset_l):
         stacked_img = data['img_1']
         targets = data['target_1']
-        error, samples = model.evaluate_SDR(stacked_img, targets)
+        error, samples = model.evaluate_sdr(stacked_img, targets)
 
         for j in range(0, 3):
             error_list[j] += error[j]
@@ -63,7 +63,7 @@ def test_SDR(model):
         stacked_img = data['img_1']
         targets = data['target_1']
 
-        error, samples = model.evaluate_SDR(stacked_img, targets)
+        error, samples = model.evaluate_sdr(stacked_img, targets)
 
         for j in range(0, 3):
             error_list[j] += error[j]

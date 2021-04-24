@@ -338,7 +338,7 @@ def get_dataset_loaders(dataset_dir, batch_size=None, workers=4, validation_spli
     train_sampler = SubsetRandomSampler(train_indices)
     val_sampler = SubsetRandomSampler(val_indices)
 
-    loader_kwargs = {'batch_size': batch_size, 'num_workers': workers, 'pin_memory': True}
+    loader_kwargs = {'batch_size': batch_size, 'num_workers': workers, 'pin_memory': True, 'drop_last': False}
     train_loader = torch.utils.data.DataLoader(ds, sampler=train_sampler, **loader_kwargs)
     val_loader = torch.utils.data.DataLoader(ds, sampler=val_sampler, **loader_kwargs)
     return train_loader, val_loader

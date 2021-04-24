@@ -23,7 +23,7 @@ class HourglassModel(pl.LightningModule):
         return 'HourglassModel'
 
     def __init__(self, opt, weights_path=None, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super(HourglassModel, self).__init__(*args, **kwargs)
 
         # new
         self.lr_coef = kwargs['lr_coef'] if 'lr_coef' in kwargs else 100
@@ -73,7 +73,7 @@ class HourglassModel(pl.LightningModule):
         # print('train', imgs.device, depths.device, masks.device)
 
         # batch prediction
-        preds = self.model.forward(imgs)
+        preds = self.forward(imgs)
         preds = torch.squeeze(preds, dim=1)
 
         data_loss = rmse_loss(preds, depths, masks, scale_invariant=self.scale_invariancy)
@@ -94,7 +94,7 @@ class HourglassModel(pl.LightningModule):
         paths = val_batch['path']
         # print('val', imgs.device, depths.device, masks.device)
 
-        preds = self.model.forward(imgs)
+        preds = self.forward(imgs)
         preds = torch.squeeze(preds, dim=1)
 
         data_loss = rmse_loss(preds, depths, masks, scale_invariant=False)

@@ -23,7 +23,7 @@ sys_path_extension = [os.getcwd()]  # + [d for d in os.listdir() if os.path.isdi
 sys.path.extend(sys_path_extension)
 
 # local
-from geopose.dataset import get_dataset_loaders
+from geopose.dataset import GeoposeData, get_dataset_loaders
 from geopose.losses import rmse_loss, gradient_loss
 from geopose.util import running_mean
 
@@ -142,7 +142,7 @@ if __name__ == '__main__':
         os.makedirs(drive_outputs_path, exist_ok=True)
 
     else:
-        dataset_path = os.path.join('datasets', 'geoPose3K_final_publish')
+        dataset_path = os.path.join('datasets', 'geoPose3K_mini')  # final_publish
         outputs_dir = os.path.join('geopose', 'model_outputs', training_run_id)
 
     os.makedirs(outputs_dir, exist_ok=True)
@@ -151,9 +151,10 @@ if __name__ == '__main__':
     # rotate_images(ds_dir)
 
     """ Dataset """
-    batch_size = 8 if running_in_colab else 2
-    train_loader, val_loader = get_dataset_loaders(dataset_path, batch_size, workers=4, shuffle=False)
-
+    batch_size = 8 if running_in_colab else 1
+    # train_loader, val_loader = get_dataset_loaders(dataset_path, batch_size, validation_split=.4,
+    #                                                workers=4, shuffle=False)
+    geopose_data = GeoposeData(dataset_path, batch_size=batch_size, val_split=.2, workers=4)
     """ Model """
     megadepth_checkpoints_path = './megadepth/checkpoints/'
 
@@ -163,10 +164,12 @@ if __name__ == '__main__':
 
     training_kwargs = {
         'scale_invariancy': False,
-        'lr_coef': 100,
+        'lr_coef': 200,
         'quiet': True,
+        'batch_size': batch_size,
     }
     hourglass = HourglassModel(opt, **training_kwargs)
+
     """ Training """
     # torch.autograd.set_detect_anomaly(True)  # debugging
     torch.backends.cudnn.enabled = True
@@ -174,10 +177,20 @@ if __name__ == '__main__':
 
     trainer = pl.Trainer(gpus=1,
                          auto_scale_batch_size=True,
-                         precision=16,
-                         logger=loggers.TensorBoardLogger('logs/')
+                         # precision=16,
+                         logger=loggers.TensorBoardLogger('logs/'),
+                         num_sanity_val_steps=2,
+                         # limit_train_batches=0.3,
+                         # limit_val_batches=0.1,
+                         # limit_test_batches=0.3,
+                         auto_lr_find=True,
                          )
-    trainer.fit(hourglass, train_loader, val_loader)
+
+    trainer.tune(hourglass, datamodule=geopose_data)
+
+    print('LR', hourglass.lr)
+
+    trainer.fit(hourglass, datamodule=geopose_data)
 
     if False:
         scaler = torch.cuda.amp.GradScaler()
@@ -206,11 +219,10 @@ if __name__ == '__main__':
                         param.grad = None
 
                     with torch.cuda.amp.autocast():
-                        imgs = batch['img'].type(torch.FloatTensor).permute(0, 3, 1, 2)  # from NHWC to NCHW
-                        # todo imgs transformations could be a part of transforms
+                        imgs = batch['img']
 
-                        depths = batch['depth'].cuda()
-                        masks = batch['mask'].cuda()
+                        depths = batch['depth']
+                        masks = batch['mask']
                         paths = batch['path']
 
                         # batch prediction
@@ -254,10 +266,10 @@ if __name__ == '__main__':
                     print('val:')
                 batch_start = time.time()
                 for i, batch in enumerate(val_loader):
-                    imgs = batch['img'].type(torch.FloatTensor).permute(0, 3, 1, 2)  # from NHWC to NCHW
+                    imgs = batch['img']
 
-                    depths = batch['depth'].cuda()
-                    masks = batch['mask'].cuda()
+                    depths = batch['depth']
+                    masks = batch['mask']
                     paths = batch['path']
 
                     preds = hourglass.model.forward(imgs)

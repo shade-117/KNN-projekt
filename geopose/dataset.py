@@ -7,15 +7,18 @@ import os
 
 # external
 import numpy as np
+import pytorch_lightning
 import torch
 import imageio  # read PFM
 import matplotlib.pyplot as plt
 import cv2 as cv
 from skimage.transform import resize
-from torch.utils.data import SubsetRandomSampler
+from torch.utils.data import DataLoader, SubsetRandomSampler
 from scipy.ndimage import rotate
 from torchvision import transforms
 from turbojpeg import TurboJPEG
+
+import pytorch_lightning as pl
 
 # local
 from geopose.util import inpaint_nan
@@ -94,6 +97,10 @@ class GeoPoseDataset(torch.utils.data.Dataset):
         indices = np.argwhere(np.isnan(depth_img))
         for ind_nan in indices:
             depth_img[ind_nan[0], ind_nan[1]] = inpaint_nan(2, depth_img, ind_nan[0], ind_nan[1])
+
+        no_nans_here = np.sum(np.isnan(depth_img))
+        if no_nans_here > 0:
+            raise ValueError('nans still present')
 
         if self.verbose and np.sum(nans) > 0:
             print('NaN x{} in {}'.format(np.sum(nans), self.depth_paths[idx]))
@@ -337,8 +344,46 @@ def get_dataset_loaders(dataset_dir, batch_size=None, workers=4, validation_spli
         # train_sampler = RandomSampler(train_ds)
         # val_sampler = RandomSampler(val_ds)
 
-
     loader_kwargs = {'batch_size': batch_size, 'num_workers': workers, 'pin_memory': True, 'drop_last': False}
     train_loader = torch.utils.data.DataLoader(train_ds, sampler=train_sampler, **loader_kwargs)
     val_loader = torch.utils.data.DataLoader(val_ds, sampler=val_sampler, **loader_kwargs)
+
+    if batch_size is not None:
+        if len(train_loader.dataset.indices) < batch_size:
+            raise UserWarning('Training data subset too small')
+
+        if len(val_loader.dataset.indices) < batch_size:
+            raise UserWarning('Validation data subset too small')
+
     return train_loader, val_loader
+
+
+class GeoposeData(pl.LightningDataModule):
+
+    def __init__(self, dataset_path, batch_size=2, val_split=.2, workers=4):
+        super(GeoposeData, self).__init__()
+        self.dataset_path = dataset_path
+        self.batch_size = batch_size
+        self.val_split = val_split
+        self.ds = GeoPoseDataset(ds_dir=self.dataset_path, transforms=transforms.ToTensor(), verbose=False)
+        split_index = int(len(self.ds) * (1 - self.val_split))
+        self.train_ds, self.val_ds = torch.utils.data.random_split(self.ds, [split_index, len(self.ds) - split_index])
+        self.loader_kwargs = {'batch_size': self.batch_size,
+                              'num_workers': workers,
+                              'pin_memory': True,
+                              'drop_last': True}
+
+    # must implement abstract methods
+    def setup(self, stage=None):
+        pass
+
+    def prepare_data(self, *args, **kwargs):
+        pass
+
+    def train_dataloader(self):
+        train_loader = DataLoader(self.train_ds, **self.loader_kwargs)
+        return train_loader
+
+    def val_dataloader(self):
+        train_loader = DataLoader(self.val_ds, **self.loader_kwargs)
+        return train_loader

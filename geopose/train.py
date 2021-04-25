@@ -160,7 +160,13 @@ if __name__ == '__main__':
     with patch.object(sys, 'argv', [curr_script_path]):
         # fix for colab interpreter arguments
         opt = TrainOptions().parse(quiet=True)  # set CUDA_VISIBLE_DEVICES before import torch
-    hourglass = HourglassModel(opt)
+
+    training_kwargs = {
+        'scale_invariancy': False,
+        'lr_coef': 100,
+        'quiet': True,
+    }
+    hourglass = HourglassModel(opt, **training_kwargs)
     """ Training """
     # torch.autograd.set_detect_anomaly(True)  # debugging
     torch.backends.cudnn.enabled = True
@@ -169,7 +175,7 @@ if __name__ == '__main__':
     trainer = pl.Trainer(gpus=1,
                          auto_scale_batch_size=True,
                          precision=16,
-                         # logger=loggers.TensorBoardLogger('logs/')
+                         logger=loggers.TensorBoardLogger('logs/')
                          )
     trainer.fit(hourglass, train_loader, val_loader)
 

@@ -38,6 +38,7 @@ class GeoPoseDataset(torch.utils.data.Dataset):
         self.img_paths = []
         self.depth_paths = []
         # self.mask_paths = []
+        self.info_paths = []
         self.transforms = transforms
         self.jpeg_reader = TurboJPEG()
 
@@ -50,6 +51,7 @@ class GeoPoseDataset(torch.utils.data.Dataset):
             img_path = os.path.join(ds_dir, curr_dir, 'photo.jpeg')
             depth_path = os.path.join(ds_dir, curr_dir, 'distance_crop.pfm')
             # mask_path = os.path.join(ds_dir, curr_dir, 'pinhole_labels_crop.png')
+            info_path = os.path.join(ds_dir, curr_dir, 'info.txt')
 
             if not (os.path.isfile(img_path) and
                     os.path.isfile(depth_path)):
@@ -59,6 +61,7 @@ class GeoPoseDataset(torch.utils.data.Dataset):
             self.img_paths.append(img_path)
             self.depth_paths.append(depth_path)
             # self.mask_paths.append(mask_path)
+            self.info_paths.append(info_path)
 
         if len(self.img_paths) != len(self.depth_paths):
             print("image and depth lists length does not match {} x {}"
@@ -85,6 +88,12 @@ class GeoPoseDataset(torch.utils.data.Dataset):
         elif not np.issubdtype(type(idx), np.integer):
             return TypeError('Invalid index type')
 
+        with open(self.info_paths[idx], 'r') as f:
+            fov_info = f.read().splitlines()
+
+        # 6th item is FOV
+        fov_info = float(fov_info[5])
+
         # depth image (ground-truth)
         depth_img = imageio.imread(self.depth_paths[idx], format='pfm')
         depth_img = np.flipud(np.array(depth_img)).copy()
@@ -97,10 +106,6 @@ class GeoPoseDataset(torch.utils.data.Dataset):
         indices = np.argwhere(np.isnan(depth_img))
         for ind_nan in indices:
             depth_img[ind_nan[0], ind_nan[1]] = inpaint_nan(2, depth_img, ind_nan[0], ind_nan[1])
-
-        no_nans_here = np.sum(np.isnan(depth_img))
-        if no_nans_here > 0:
-            raise ValueError('nans still present')
 
         if self.verbose and np.sum(nans) > 0:
             print('NaN x{} in {}'.format(np.sum(nans), self.depth_paths[idx]))
@@ -132,6 +137,7 @@ class GeoPoseDataset(torch.utils.data.Dataset):
             'img': base_img,
             'mask': mask_sky,
             'path': os.path.dirname(self.img_paths[idx]),
+            'fov': fov_info,
         }
         return sample
         # return base_img, depth_img, mask_sky, os.path.dirname(self.img_paths[idx])

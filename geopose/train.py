@@ -142,7 +142,7 @@ if __name__ == '__main__':
         os.makedirs(drive_outputs_path, exist_ok=True)
 
     else:
-        dataset_path = os.path.join('datasets', 'geoPose3K_mini')  # final_publish
+        dataset_path = os.path.join('datasets', 'geoPose3K_final_publish')
         outputs_dir = os.path.join('geopose', 'model_outputs', training_run_id)
         drive_outputs_path = None
     os.makedirs(outputs_dir, exist_ok=True)
@@ -152,9 +152,8 @@ if __name__ == '__main__':
 
     """ Dataset """
     batch_size = 8 if running_in_colab else 2
-    # train_loader, val_loader = get_dataset_loaders(dataset_path, batch_size, validation_split=.4,
-    #                                                workers=4, shuffle=False)
     geopose_data = GeoposeData(dataset_path, batch_size=batch_size, val_split=.2, workers=4)
+
     """ Model """
     megadepth_checkpoints_path = './megadepth/checkpoints/'
 
@@ -176,19 +175,19 @@ if __name__ == '__main__':
     # torch.autograd.set_detect_anomaly(True)  # debugging
     torch.backends.cudnn.enabled = True
     torch.backends.cudnn.benchmark = True  # better performance
-    raise ValueError()
+
     trainer = pl.Trainer(gpus=1,
-                         auto_scale_batch_size=True,
+                         # auto_scale_batch_size=True,
                          precision=16,
                          logger=loggers.TensorBoardLogger('logs/'),
                          num_sanity_val_steps=2,
-                         # limit_train_batches=0.3,
-                         # limit_val_batches=0.1,
+                         limit_train_batches=0.3,
+                         limit_val_batches=0.1,
                          # limit_test_batches=0.3,
                          # auto_lr_find=True,
                          )
 
-    trainer.tune(hourglass, datamodule=geopose_data)
+    # trainer.tune(hourglass, datamodule=geopose_data)
 
     trainer.fit(hourglass, datamodule=geopose_data)
 
@@ -252,7 +251,6 @@ if __name__ == '__main__':
                         print("\t{:>4}/{} : d={:<9.2f} g={:<9.2f} t={:.2f}s/sample "
                               .format(i + 1, len(train_loader), batch_loss.item(), grad_loss.item(),
                                       (time.time() - epoch_start) / ((i + 1) * batch_size)))
-                    break
 
             except KeyboardInterrupt:
                 print('stopped training')

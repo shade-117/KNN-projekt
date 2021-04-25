@@ -44,16 +44,21 @@ class HourglassModel(pl.LightningModule):
 
         print("============= LOADING Hourglass NETWORK =============")
         self.model = hg_model_old  # todo try and verify new hg_model
+        self.model = torch.nn.parallel.DataParallel(self.model, device_ids=[0])
 
-        if weights_path is not None:
-            model_parameters = self.load_network('G', 'best_generalization')
-            # model_parameters = self.load_network('G', 'saved')
-            # model_parameters = self.load_network('G', 'saved_1480.2093')
-            # model_parameters = self.load_network('G', 'saved_1457.3193')
-            # model_parameters = self.load_network('G', 'saved_1436.4768')
-            # model_parameters = self.load_network('G', 'saved_600batches_no-logs_lr2_by_100')
-            # model_parameters = self.load_network('G', 'saved_1.1111')
-            self.model.load_state_dict(model_parameters)
+        if weights_path is None:
+            self.load_network('G', 'best_generalization')
+
+            # self.load_network('G', 'saved')
+            # self.load_network('G', 'saved_1480.2093')
+            # self.load_network('G', 'saved_1457.3193')
+            # self.load_network('G', 'saved_1436.4768')
+            # self.load_network('G', 'saved_600batches_no-logs_lr2_by_100')
+            # self.load_network('G', 'saved_1.1111')
+        else:
+            self.model.load_state_dict(torch.load(weights_path))
+
+        self.model = self.model.cuda()
 
     def forward(self, x):
         pred = self.model(x)
@@ -131,10 +136,10 @@ class HourglassModel(pl.LightningModule):
         if not os.path.isfile(save_path):
             save_path = os.path.join('megadepth', 'checkpoints', save_path)
             if not os.path.isfile(save_path):
-                print('base_model: load_network: could not find file:', save_path, file=sys.stderr)
+                raise UserWarning('base_model: load_network: Weights not loaded :C\ncould not find file:', save_path, file=sys.stderr)
 
-        model = torch.load(save_path)
-        return model  # network.load_state_dict(torch.load(save_path))
+        self.model.load_state_dict(torch.load(save_path))
+
 
     """ No class members past here are actually used """
 

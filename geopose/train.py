@@ -162,7 +162,7 @@ if __name__ == '__main__':
         opt = TrainOptions().parse(quiet=True)  # set CUDA_VISIBLE_DEVICES before import torch
 
     training_kwargs = {
-        'scale_invariancy': False,
+        'scale_invariancy': True,
         'lr_coef': 200,
         'quiet': True,
         'batch_size': batch_size,
@@ -181,8 +181,8 @@ if __name__ == '__main__':
                          precision=16,
                          logger=loggers.TensorBoardLogger('logs/'),
                          num_sanity_val_steps=2,
-                         limit_train_batches=0.3,
-                         limit_val_batches=0.1,
+                         limit_train_batches=0.01,
+                         limit_val_batches=0.02,
                          # limit_test_batches=0.3,
                          # auto_lr_find=True,
                          )

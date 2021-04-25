@@ -113,7 +113,7 @@ class GeoPoseDataset(torch.utils.data.Dataset):
         # input image
         with open(self.img_paths[idx], 'rb') as photo_jpeg:
             base_img = self.jpeg_reader.decode(photo_jpeg.read(), 0)  # 0 == RGB
-        base_img = np.array(base_img, dtype=np.float32)
+        base_img = np.array(base_img, dtype=np.float32) / 255.0
 
         # image segmentation (ground-truth)
         # mask_img = imageio.imread(self.mask_paths[idx], format='png')  # (WxHxC)

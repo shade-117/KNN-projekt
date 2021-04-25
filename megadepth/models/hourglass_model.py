@@ -1,5 +1,6 @@
 # stdlib
 import os
+import shutil
 import sys
 from functools import reduce
 
@@ -28,6 +29,8 @@ class HourglassModel(pl.LightningModule):
         self.quiet = kwargs.pop('quiet', True)
         self.scale_invariancy = kwargs.pop('scale_invariancy', False)
         self.batch_size = kwargs.pop('batch_size', 1)
+        self.running_in_colab = kwargs.pop('running_in_colab', False)
+        self.drive_outputs_path = kwargs.pop('drive_outputs_path', None)
 
         super(HourglassModel, self).__init__(*args, **kwargs)
 
@@ -106,6 +109,13 @@ class HourglassModel(pl.LightningModule):
         self.log('val_joint_loss', joint_loss, on_epoch=True)
 
         return joint_loss
+
+    def training_epoch_end(self, outputs):
+        if self.running_in_colab:
+            # copy logs to gdrive - HourglassModel needs drive_outputs_path
+            # todo finish
+            # shutil.copytree('logs', self.drive_outputs_path)
+            pass
 
     def save_network(self, network_label, epoch_label):
         save_filename = '_%s_net_%s.pth' % (epoch_label, network_label)

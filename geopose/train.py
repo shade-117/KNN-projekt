@@ -144,14 +144,14 @@ if __name__ == '__main__':
     else:
         dataset_path = os.path.join('datasets', 'geoPose3K_mini')  # final_publish
         outputs_dir = os.path.join('geopose', 'model_outputs', training_run_id)
-
+        drive_outputs_path = None
     os.makedirs(outputs_dir, exist_ok=True)
 
     # clear_dataset_dir(ds_dir)
     # rotate_images(ds_dir)
 
     """ Dataset """
-    batch_size = 8 if running_in_colab else 1
+    batch_size = 8 if running_in_colab else 2
     # train_loader, val_loader = get_dataset_loaders(dataset_path, batch_size, validation_split=.4,
     #                                                workers=4, shuffle=False)
     geopose_data = GeoposeData(dataset_path, batch_size=batch_size, val_split=.2, workers=4)
@@ -167,6 +167,8 @@ if __name__ == '__main__':
         'lr_coef': 200,
         'quiet': True,
         'batch_size': batch_size,
+        'running_in_colab': running_in_colab,
+        'drive_outputs_path': drive_outputs_path
     }
     hourglass = HourglassModel(opt, **training_kwargs)
 
@@ -177,18 +179,16 @@ if __name__ == '__main__':
 
     trainer = pl.Trainer(gpus=1,
                          auto_scale_batch_size=True,
-                         # precision=16,
+                         precision=16,
                          logger=loggers.TensorBoardLogger('logs/'),
                          num_sanity_val_steps=2,
                          # limit_train_batches=0.3,
                          # limit_val_batches=0.1,
                          # limit_test_batches=0.3,
-                         auto_lr_find=True,
+                         # auto_lr_find=True,
                          )
 
     trainer.tune(hourglass, datamodule=geopose_data)
-
-    print('LR', hourglass.lr)
 
     trainer.fit(hourglass, datamodule=geopose_data)
 

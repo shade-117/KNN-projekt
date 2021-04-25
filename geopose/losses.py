@@ -7,7 +7,7 @@ def rmse_loss(pred, gt, mask=None, scale_invariant=True):
 
     gt = gt.squeeze(dim=1)
     mask = mask.squeeze(dim=1)
-
+    
     n = mask.sum(dim=2).sum(dim=1)
 
     diff = pred - gt

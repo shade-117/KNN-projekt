@@ -99,12 +99,11 @@ class GeoPoseDataset(torch.utils.data.Dataset):
 
         # remove NaN from depth image
         nans = np.isnan(depth_img)
-        # depth_img[nans] = np.nanmean(depth_img)
 
-        # remove NaN from depth image with local mean
         indices = np.argwhere(np.isnan(depth_img))
         for ind_nan in indices:
-            depth_img[ind_nan[0], ind_nan[1]] = inpaint_nan(2, depth_img, ind_nan[0], ind_nan[1])
+            # replace NaN by local mean
+            depth_img[ind_nan[0], ind_nan[1]] = inpaint_nan(depth_img, ind_nan[0], ind_nan[1], radius=2)
 
         if self.verbose and np.sum(nans) > 0:
             print('NaN x{} in {}'.format(np.sum(nans), self.depth_paths[idx]))
@@ -112,7 +111,7 @@ class GeoPoseDataset(torch.utils.data.Dataset):
         # input image
         with open(self.img_paths[idx], 'rb') as photo_jpeg:
             base_img = self.jpeg_reader.decode(photo_jpeg.read(), 0)  # 0 == RGB
-        base_img = np.array(base_img, dtype=np.float32)
+        base_img = np.array(base_img, dtype=np.float32) / 255
         
         # image segmentation (ground-truth)
         # mask_img = imageio.imread(self.mask_paths[idx], format='png')  # (WxHxC)
@@ -139,17 +138,10 @@ class GeoPoseDataset(torch.utils.data.Dataset):
             'fov': fov_info,
         }
         return sample
-        # return base_img, depth_img, mask_sky, os.path.dirname(self.img_paths[idx])
-
 
     def __iter__(self):
         for i in range(len(self)):
             yield self[i]
-
-    @staticmethod
-    def collate(data):
-        # unused
-        return tuple(zip(*data))
 
 
 def clear_dataset_dir(ds_dir):

@@ -43,27 +43,27 @@ def timing(f):
     return wrap
 
 
-def inpaint_nan(k, image, row, col):
+def inpaint_nan(image, row, col, radius=2):
     """
     Demo: https://colab.research.google.com/drive/1TVjaB7kJMN-jmhrryJOZ7Lggp6Xri1l0?usp=sharing
 
     :param row: target nan pixel row
     :param col: target nan pixel column
-    :param k: local area size --> filter_size = 1 + 2 * k
+    :param radius: local area size --> filter_size = 1 + 2 * k
     :param image: input image
     :return: local nanmean value for target pixel
     """
     pixel_sum = 0
     pixel_count = 0
-    filter_size = 1 + 2 * k
+    filter_size = 1 + 2 * radius
     for i in range(0, filter_size):
         for j in range(0, filter_size):
             # Out of boundary pixels are skipped.
-            if row - k + i < 0 or col - k + j < 0 \
-                    or row - k + i > image.shape[0] - 1 or col - k + j > image.shape[1] - 1:
+            if row - radius + i < 0 or col - radius + j < 0 \
+                    or row - radius + i > image.shape[0] - 1 or col - radius + j > image.shape[1] - 1:
                 continue
             else:
-                pixel = image[row - k + i][col - k + j]
+                pixel = image[row - radius + i][col - radius + j]
                 if math.isnan(pixel):
                     continue
                 else:
@@ -80,7 +80,7 @@ def inpaint_nan_numpy(k, image, row, col):
 
     :param row: target nan pixel row
     :param col: target nan pixel column
-    :param k: local area size --> filter_size = 1 + 2 * k
+    :param k: local area size --> filter_size = 1 + 2 * radius
     :param image: input image
     :return: local nanmean value for target pixel
     """
@@ -91,6 +91,6 @@ def inpaint_nan_numpy(k, image, row, col):
     col = max(col, k)
     col = min(col, image.shape[1] - k - 1)
 
-    # plt.imshow(image[row - k:row + k + 1, col - k: col + k + 1].copy())
+    # plt.imshow(image[row - radius:row + radius + 1, col - radius: col + radius + 1].copy())
     # plt.show()
     return np.nanmean(image[row - k:row + k + 1, col - k: col + k + 1])

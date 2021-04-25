@@ -140,7 +140,7 @@ if __name__ == '__main__':
 
             # # todo show 4 subplots: original image, GT, depth map, depth map no sky
             fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(nrows=2, ncols=2)
-            ax1.imshow(sample['img'].permute(1, 2, 0).numpy() / 255)
+            ax1.imshow(sample['img'].permute(1, 2, 0).numpy())
             ax2.imshow(depth_img[0])
             ax3.imshow(megadepth_pred_backup.squeeze())
             ax4.imshow(megadepth_pred.squeeze())

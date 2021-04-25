@@ -176,7 +176,7 @@ if __name__ == '__main__':
     # torch.autograd.set_detect_anomaly(True)  # debugging
     torch.backends.cudnn.enabled = True
     torch.backends.cudnn.benchmark = True  # better performance
-
+    raise ValueError()
     trainer = pl.Trainer(gpus=1,
                          auto_scale_batch_size=True,
                          precision=16,
@@ -193,6 +193,9 @@ if __name__ == '__main__':
     trainer.fit(hourglass, datamodule=geopose_data)
 
     if False:
+        hourglass.model.to('cuda:0')
+        train_loader = geopose_data.train_dataloader()
+        val_loader = geopose_data.val_dataloader()
         scaler = torch.cuda.amp.GradScaler()
 
         optimizer = torch.optim.Adam(hourglass.model.parameters(), lr=opt.lr * 100, betas=(opt.beta1, 0.999))
@@ -219,11 +222,11 @@ if __name__ == '__main__':
                         param.grad = None
 
                     with torch.cuda.amp.autocast():
-                        imgs = batch['img']
+                        imgs = batch['img'].to('cuda:0')
 
-                        depths = batch['depth']
-                        masks = batch['mask']
-                        paths = batch['path']
+                        depths = batch['depth'].to('cuda:0')
+                        masks = batch['mask'].to('cuda:0')
+                        # paths = batch['path']
 
                         # batch prediction
                         preds = hourglass.model.forward(imgs)
@@ -249,6 +252,7 @@ if __name__ == '__main__':
                         print("\t{:>4}/{} : d={:<9.2f} g={:<9.2f} t={:.2f}s/sample "
                               .format(i + 1, len(train_loader), batch_loss.item(), grad_loss.item(),
                                       (time.time() - epoch_start) / ((i + 1) * batch_size)))
+                    break
 
             except KeyboardInterrupt:
                 print('stopped training')
@@ -266,11 +270,11 @@ if __name__ == '__main__':
                     print('val:')
                 batch_start = time.time()
                 for i, batch in enumerate(val_loader):
-                    imgs = batch['img']
+                    imgs = batch['img'].to('cuda:0')
 
-                    depths = batch['depth']
-                    masks = batch['mask']
-                    paths = batch['path']
+                    depths = batch['depth'].to('cuda:0')
+                    masks = batch['mask'].to('cuda:0')
+                    # paths = batch['path']
 
                     preds = hourglass.model.forward(imgs)
                     preds = torch.squeeze(preds, dim=1)

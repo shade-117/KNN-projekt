@@ -186,8 +186,7 @@ if __name__ == '__main__':
                     param.grad = None
 
                 with torch.cuda.amp.autocast():
-                    imgs = batch['img'].type(torch.FloatTensor).permute(0, 3, 1, 2)  # from NHWC to NCHW
-                    # todo imgs transformations could be a part of transforms
+                    imgs = batch['img'].to('cuda:0')
 
                     depths = batch['depth'].cuda()
                     masks = batch['mask'].cuda()
@@ -234,7 +233,7 @@ if __name__ == '__main__':
                 print('val:')
             batch_start = time.time()
             for i, batch in enumerate(val_loader):
-                imgs = batch['img'].type(torch.FloatTensor).permute(0, 3, 1, 2)  # from NHWC to NCHW
+                imgs = batch['img'].to('cuda:0')
 
                 depths = batch['depth'].cuda()
                 masks = batch['mask'].cuda()

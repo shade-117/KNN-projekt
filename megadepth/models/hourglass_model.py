@@ -13,7 +13,6 @@ class HourglassModel:
         return 'HourglassModel'
 
     def __init__(self, opt, weights_path=None):
-        # BaseModel.initialize(self, opt)
         self.opt = opt
         self.gpu_ids = opt.gpu_ids
         self.isTrain = opt.isTrain
@@ -22,31 +21,25 @@ class HourglassModel:
 
         print("============= LOADING Hourglass NETWORK =============")
         self.model = hg_model
-        self.model = DataParallel(self.model)  # device_ids=[0]
 
-        # torch.distributed.init_process_group(backend='nccl', world_size=4, init_method='...')
-        # self.model = DistributedDataParallel(self.model)
         if weights_path is not None:
-            if os.path.isfile(weights_path):
-                model_parameters = self.load_network('G', 'best_generalization')
-                # model_parameters = self.load_network(model, 'G', 'saved')
-                # model_parameters = self.load_network(model, 'G', 'saved_1480.2093')
-                # model_parameters = self.load_network(model, 'G', 'saved_1457.3193')
-                # model_parameters = self.load_network(model, 'G', 'saved_1436.4768')
-                # model_parameters = self.load_network(model, 'G', 'saved_600batches_no-logs_lr2_by_100')
-                # model_parameters = self.load_network(model, 'G', 'saved_1.1111')
-                self.model.load_state_dict(model_parameters)
-            else:
-                print('HourglassModel: could not find weigths:', weights_path)
+            model_parameters = self.load_network('G', 'best_generalization')
+            # model_parameters = self.load_network('G', 'saved')
+            # model_parameters = self.load_network('G', 'saved_1480.2093')
+            # model_parameters = self.load_network('G', 'saved_1457.3193')
+            # model_parameters = self.load_network('G', 'saved_1436.4768')
+            # model_parameters = self.load_network('G', 'saved_600batches_no-logs_lr2_by_100')
+            # model_parameters = self.load_network('G', 'saved_1.1111')
+            self.model.load_state_dict(model_parameters)
 
         self.model.cuda()
 
-    def save_network(self, network, network_label, epoch_label, gpu_ids):
+    def save_network(self, network_label, epoch_label):
         save_filename = '_%s_net_%s.pth' % (epoch_label, network_label)
         save_path = os.path.join(self.save_dir, save_filename)
-        torch.save(network.cpu().state_dict(), save_path)
-        if len(gpu_ids) and torch.cuda.is_available():
-            network.cuda(device_id=gpu_ids[0])
+        torch.save(self.model.cpu().state_dict(), save_path)
+        if len(self.gpu_ids) and torch.cuda.is_available():
+            self.model.cuda()
 
     def load_network(self, network_label, epoch_label):
         save_filename = '%s_net_%s.pth' % (epoch_label, network_label)

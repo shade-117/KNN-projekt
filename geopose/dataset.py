@@ -6,6 +6,8 @@ from collections.abc import Iterable
 import os
 
 # external
+from math import ceil
+
 import numpy as np
 import torch
 import imageio  # read PFM
@@ -20,14 +22,13 @@ from turbojpeg import TurboJPEG
 # local
 from geopose.util import inpaint_nan
 
-
 imageio.plugins.freeimage.download()  # download Freelibs for reading PFM files
 
 
 class GeoPoseDataset(torch.utils.data.Dataset):
     """GeoPose3k as a dataset of dictionaries {path, image, depth}"""
 
-    def __init__(self, ds_dir='datasets/geoPose3K_final_publish/', transforms=None, verbose=False):
+    def __init__(self, ds_dir='datasets/geoPose3K_final_publish/', transforms=None, verbose=False, fraction=1.0):
         super(GeoPoseDataset).__init__()
         assert os.path.isdir(ds_dir), \
             'Dataset could not find dir "{}"'.format(ds_dir)
@@ -42,9 +43,13 @@ class GeoPoseDataset(torch.utils.data.Dataset):
 
         self.target_size = 384, 512
 
-
         # list only directories, sorting not really necessary
         listed_data_dir = [d for d in sorted(os.listdir(ds_dir)) if os.path.isdir(os.path.join(ds_dir, d))]
+
+        if fraction:
+            end = int(ceil(len(listed_data_dir) * fraction))
+            print('Using only {} out of {} dataset samples'.format(end, len(listed_data_dir)))
+            listed_data_dir = listed_data_dir[:end]
 
         for curr_dir in listed_data_dir:
             img_path = os.path.join(ds_dir, curr_dir, 'photo.jpeg')
@@ -92,7 +97,7 @@ class GeoPoseDataset(torch.utils.data.Dataset):
 
         # 6th item is FOV
         fov_info = float(fov_info[5])
-        
+
         # depth image (ground-truth)
         depth_img = imageio.imread(self.depth_paths[idx], format='pfm')
         depth_img = np.flipud(np.array(depth_img)).copy()
@@ -112,7 +117,7 @@ class GeoPoseDataset(torch.utils.data.Dataset):
         with open(self.img_paths[idx], 'rb') as photo_jpeg:
             base_img = self.jpeg_reader.decode(photo_jpeg.read(), 0)  # 0 == RGB
         base_img = np.array(base_img, dtype=np.float32) / 255
-        
+
         # image segmentation (ground-truth)
         # mask_img = imageio.imread(self.mask_paths[idx], format='png')  # (WxHxC)
         # mask_img = mask_img[:, :, :3].sum(axis=2)  # ignore alpha channel, merge channels
@@ -327,8 +332,8 @@ def rotate_images(ds_dir='datasets/geoPose3K_final_publish/', show_cv=False, sho
         os.chdir(old_cwd)
 
 
-def get_dataset_loaders(dataset_dir, batch_size=None, workers=4, validation_split=.1, shuffle=False):
-    ds = GeoPoseDataset(ds_dir=dataset_dir, transforms=transforms.ToTensor(), verbose=False)
+def get_dataset_loaders(dataset_dir, batch_size=None, workers=4, validation_split=.1, shuffle=False, fraction=1.0):
+    ds = GeoPoseDataset(ds_dir=dataset_dir, transforms=transforms.ToTensor(), verbose=False, fraction=fraction)
     split_index = int(len(ds) * (1 - validation_split))
     train_ds, val_ds = torch.utils.data.random_split(ds, [split_index, len(ds) - split_index])
     # todo test set
@@ -348,9 +353,9 @@ def get_dataset_loaders(dataset_dir, batch_size=None, workers=4, validation_spli
 
     if batch_size is not None:
         if len(train_loader.dataset.indices) < batch_size:
-            raise UserWarning('Training data subset too small')
+            raise UserWarning('Training data subset too small', len(train_loader.dataset.indices))
 
         if len(val_loader.dataset.indices) < batch_size:
-            raise UserWarning('Validation data subset too small')
+            raise UserWarning('Validation data subset too small', len(val_loader.dataset.indices))
 
     return train_loader, val_loader

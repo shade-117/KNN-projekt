@@ -18,6 +18,7 @@ from megadepth.options.train_options import TrainOptions
 from megadepth.models.hourglass_model import HourglassModel
 from semseg.models.models import ModelBuilder, SegmentationModule
 from semseg.utils import colorEncode
+from geopose.losses import rmse_loss, gradient_loss
 import geopose.dataset as dataset
 
 from utils.process_images import get_sky_mask, transform_image_for_megadepth, megadepth_predict, \
@@ -87,25 +88,33 @@ if __name__ == '__main__':
         for i, sample in enumerate(ds[indices]):
             start = time.time()
             input_image = sample['img'].cuda()
+            mask_img = sample['mask']
             depth_img = sample['depth']
-            mask_img = sample['mask'].cuda()
             dir_path = sample['path']
 
             img = torch.unsqueeze(input_image, dim=0)
             # prediction for single sample
-            pred = megadepth_model.model.forward(img).detach().cpu().numpy()
+            pred = megadepth_model.model.forward(img).detach().cpu()[0]
             # megadepth_pred = torch.squeeze(torch.exp(pred), dim=0)
-            megadepth_pred = pred[0]
+
+            depth = depth_img[None, ...]
+            mask = mask_img[None, ...]
+
+            data_loss = rmse_loss(pred, depth, mask, scale_invariant=False)
+            data_si_loss = rmse_loss(pred, depth, mask, scale_invariant=True)
+            grad_loss = gradient_loss(pred, depth, mask)
+            print(data_loss, data_si_loss, grad_loss)
 
             # megadepth_input = transform_image_for_megadepth(input_image, input_height, input_width)
             # megadepth_pred = megadepth_predict(megadepth_model, megadepth_input)
             # megadepth_pred = megadepth_predict(megadepth_model, Variable(input_image.cuda()))
-            megadepth_pred_backup = np.copy(megadepth_pred)
+            megadepth_pred = np.copy(pred)
+            megadepth_pred_backup = megadepth_pred.copy()
 
             # todo show megadepth
-            plt.imshow(megadepth_pred[0])
-            plt.colorbar()
-            plt.show()
+            # plt.imshow(megadepth_pred[0])
+            # plt.colorbar()
+            # plt.show()
 
             # todo semseg is not working now
             # img_for_semseg, _ = transform_image_for_semseg(input_image, input_height, input_width)
@@ -131,15 +140,17 @@ if __name__ == '__main__':
 
             # # todo show 4 subplots: original image, GT, depth map, depth map no sky
             fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(nrows=2, ncols=2)
-            ax1.imshow(torch.transpose(sample['img'].T, 0, 1))
-            ax2.imshow(depth_img.squeeze())
+            ax1.imshow(sample['img'].permute(1, 2, 0).numpy() / 255)
+            ax2.imshow(depth_img[0])
             ax3.imshow(megadepth_pred_backup.squeeze())
-            ax4.imshow(megadepth_pred.detach().numpy().squeeze())
+            ax4.imshow(megadepth_pred.squeeze())
             # fig.show()
-            # plt.show()
+            plt.show()
             # todo save some figures
             print(i)
-            fig.savefig('./figs/baseline/' + str(i) + '.png', dpi=110)
+            figure_location = f'./figs/baseline/{i}.png'
+            os.makedirs(os.path.dirname(figure_location), exist_ok=True)
+            fig.savefig(figure_location, dpi=110)
             if i == 50:
                 break
 

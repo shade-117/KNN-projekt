@@ -14,11 +14,11 @@ import cv2 as cv
 from skimage.transform import resize
 from torch.utils.data import SubsetRandomSampler
 from scipy.ndimage import rotate
+from torchvision import transforms
 from turbojpeg import TurboJPEG
 
 # local
 from geopose.util import inpaint_nan
-
 
 imageio.plugins.freeimage.download()  # download Freelibs for reading PFM files
 
@@ -39,7 +39,6 @@ class GeoPoseDataset(torch.utils.data.Dataset):
         self.jpeg_reader = TurboJPEG()
 
         self.target_size = 384, 512
-
 
         # list only directories, sorting not really necessary
         listed_data_dir = [d for d in sorted(os.listdir(ds_dir)) if os.path.isdir(os.path.join(ds_dir, d))]
@@ -82,7 +81,7 @@ class GeoPoseDataset(torch.utils.data.Dataset):
             return (self.__getitem__(i) for i in idx)
         elif not np.issubdtype(type(idx), np.integer):
             return TypeError('Invalid index type')
-        
+
         # depth image (ground-truth)
         depth_img = imageio.imread(self.depth_paths[idx], format='pfm')
         depth_img = np.flipud(np.array(depth_img)).copy()
@@ -102,8 +101,8 @@ class GeoPoseDataset(torch.utils.data.Dataset):
         # input image
         with open(self.img_paths[idx], 'rb') as photo_jpeg:
             base_img = self.jpeg_reader.decode(photo_jpeg.read(), 0)  # 0 == RGB
-        base_img = np.array(base_img)
-        
+        base_img = np.array(base_img, dtype=np.float32)
+
         # image segmentation (ground-truth)
         # mask_img = imageio.imread(self.mask_paths[idx], format='png')  # (WxHxC)
         # mask_img = mask_img[:, :, :3].sum(axis=2)  # ignore alpha channel, merge channels
@@ -129,7 +128,6 @@ class GeoPoseDataset(torch.utils.data.Dataset):
         }
         return sample
         # return base_img, depth_img, mask_sky, os.path.dirname(self.img_paths[idx])
-
 
     def __iter__(self):
         for i in range(len(self)):
@@ -324,21 +322,23 @@ def rotate_images(ds_dir='datasets/geoPose3K_final_publish/', show_cv=False, sho
         os.chdir(old_cwd)
 
 
-def get_dataset_loaders(dataset_dir, batch_size=None, workers=4, validation_split=.1):
-    ds = GeoPoseDataset(ds_dir=dataset_dir, transforms=None, verbose=False)
-
-    # split into training & validation
+def get_dataset_loaders(dataset_dir, batch_size=None, workers=4, validation_split=.1, shuffle=False):
+    ds = GeoPoseDataset(ds_dir=dataset_dir, transforms=transforms.ToTensor(), verbose=False)
+    split_index = int(len(ds) * (1 - validation_split))
+    train_ds, val_ds = torch.utils.data.random_split(ds, [split_index, len(ds) - split_index])
     # todo test set
-    dataset_size = len(ds)
-    indices = np.arange(dataset_size)
-    np.random.shuffle(indices)
-    split = int(np.floor(validation_split * dataset_size))
-    train_indices, val_indices = indices[split:], indices[:split]
 
-    train_sampler = SubsetRandomSampler(train_indices)
-    val_sampler = SubsetRandomSampler(val_indices)
+    train_sampler = None
+    val_sampler = None
+
+    if shuffle:
+        pass
+        # shuffling currently not working, ignore this
+        # train_sampler = RandomSampler(train_ds)
+        # val_sampler = RandomSampler(val_ds)
+
 
     loader_kwargs = {'batch_size': batch_size, 'num_workers': workers, 'pin_memory': True, 'drop_last': False}
-    train_loader = torch.utils.data.DataLoader(ds, sampler=train_sampler, **loader_kwargs)
-    val_loader = torch.utils.data.DataLoader(ds, sampler=val_sampler, **loader_kwargs)
+    train_loader = torch.utils.data.DataLoader(train_ds, sampler=train_sampler, **loader_kwargs)
+    val_loader = torch.utils.data.DataLoader(val_ds, sampler=val_sampler, **loader_kwargs)
     return train_loader, val_loader

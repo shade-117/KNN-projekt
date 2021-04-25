@@ -16,6 +16,7 @@ from torch import nn
 import torch.nn.functional as F
 from torchvision import transforms
 import pytorch_lightning as pl
+from pytorch_lightning import loggers
 
 # fix for local import problems - add all local directories
 sys_path_extension = [os.getcwd()]  # + [d for d in os.listdir() if os.path.isdir(d)]
@@ -151,7 +152,7 @@ if __name__ == '__main__':
 
     """ Dataset """
     batch_size = 8 if running_in_colab else 2
-    train_loader, val_loader = get_dataset_loaders(dataset_path, batch_size, workers=4)
+    train_loader, val_loader = get_dataset_loaders(dataset_path, batch_size, workers=4, shuffle=False)
 
     """ Model """
     megadepth_checkpoints_path = './megadepth/checkpoints/'
@@ -165,7 +166,11 @@ if __name__ == '__main__':
     torch.backends.cudnn.enabled = True
     torch.backends.cudnn.benchmark = True  # better performance
 
-    trainer = pl.Trainer(gpus=1, auto_scale_batch_size=True, precision=16)  # gpus=1, precision=16
+    trainer = pl.Trainer(gpus=1,
+                         auto_scale_batch_size=True,
+                         precision=16,
+                         # logger=loggers.TensorBoardLogger('logs/')
+                         )
     trainer.fit(hourglass, train_loader, val_loader)
 
     if False:

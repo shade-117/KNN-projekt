@@ -27,7 +27,7 @@ class HourglassModel(pl.LightningModule):
 
         # new
         self.lr_coef = kwargs['lr_coef'] if 'lr_coef' in kwargs else 100
-        self.quiet = kwargs['quiet'] if 'quiet' in kwargs else False
+        self.quiet = kwargs['quiet'] if 'quiet' in kwargs else True
         self.scale_invariancy = kwargs['scale_invariancy'] if 'scale_invariancy' in kwargs else False
 
         self.opt = opt
@@ -63,14 +63,14 @@ class HourglassModel(pl.LightningModule):
         return optimizer
 
     def training_step(self, train_batch, batch_idx):
-        imgs = train_batch['img'].type(torch.FloatTensor).permute(0, 3, 1, 2).cuda()  # from NHWC to NCHW
+        imgs = train_batch['img']  # .type(torch.FloatTensor).permute(0, 3, 1, 2)  # .cuda()  # from NHWC to NCHW
         # todo imgs transformations could be a part of transforms
 
-        depths = train_batch['depth'].cuda()
-        masks = train_batch['mask'].cuda()
+        depths = train_batch['depth']  # .cuda()
+        masks = train_batch['mask']  # .cuda()
         paths = train_batch['path']
 
-        # print('train', imgs.device, depths.device, masks.device)
+        # print('train', imgs.shape, depths.shape, masks.shape)
 
         # batch prediction
         preds = self.forward(imgs)
@@ -80,19 +80,19 @@ class HourglassModel(pl.LightningModule):
         grad_loss = gradient_loss(preds, depths, masks)
         batch_loss = (data_loss + 0.5 * grad_loss)
 
-        if not self.quiet:
-            print("\t{:>4}: d={:<9.2f} g={:<9.2f}"
-                  .format(batch_idx + 1, batch_loss.item(), grad_loss.item()))
+        # if not self.quiet:
+        #     print("\t{:>4}: d={:<9.2f} g={:<9.2f}"
+        #           .format(batch_idx + 1, batch_loss.item(), grad_loss.item()))
 
         return batch_loss
 
     def validation_step(self, val_batch, val_idx):
-        imgs = val_batch['img'].type(torch.FloatTensor).permute(0, 3, 1, 2).cuda()  # from NHWC to NCHW
+        imgs = val_batch['img']  #.type(torch.FloatTensor).permute(0, 3, 1, 2)  # .cuda()  # from NHWC to NCHW
 
-        depths = val_batch['depth'].cuda()
-        masks = val_batch['mask'].cuda()
+        depths = val_batch['depth']  # .cuda()
+        masks = val_batch['mask']  # .cuda()
         paths = val_batch['path']
-        # print('val', imgs.device, depths.device, masks.device)
+        # print('val', imgs.shape, depths.shape, masks.shape)
 
         preds = self.forward(imgs)
         preds = torch.squeeze(preds, dim=1)
@@ -102,21 +102,21 @@ class HourglassModel(pl.LightningModule):
         grad_loss = gradient_loss(preds, depths, masks)
         batch_loss = (data_loss + 0.5 * grad_loss)
 
-        if not self.quiet:
-            print("\t{:>4}: d={:<9.2f} g={:<9.2f} si-d={:<9.2f}"
-                  .format(val_idx + 1, batch_loss.item(), grad_loss.item(), data_si_loss.item()))
+        # if not self.quiet:
+        #     print("\t{:>4}: d={:<9.2f} g={:<9.2f} si-d={:<9.2f}"
+        #           .format(val_idx + 1, batch_loss.item(), grad_loss.item(), data_si_loss.item()))
 
         return batch_loss
 
     def common_step(self, val_batch, val_idx):
         pass
 
-    def save_network(self, network, network_label, epoch_label, gpu_ids):
+    def save_network(self, network_label, epoch_label):
         save_filename = '_%s_net_%s.pth' % (epoch_label, network_label)
         save_path = os.path.join(self.save_dir, save_filename)
-        torch.save(network.cpu().state_dict(), save_path)
-        if len(gpu_ids) and torch.cuda.is_available():
-            network.cuda(device_id=gpu_ids[0])
+        torch.save(self.model.cpu().state_dict(), save_path)
+        if len(self.gpu_ids) and torch.cuda.is_available():
+            self.model.cuda()
 
     def load_network(self, network_label, epoch_label):
         save_filename = '%s_net_%s.pth' % (epoch_label, network_label)

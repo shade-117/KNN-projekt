@@ -25,7 +25,7 @@ class HourglassModel:
 
         # must use DataParallel to load weights saved with this setting
         self.model = torch.nn.parallel.DataParallel(self.model, device_ids=[0])
-
+        print("self.model == torch data parr")
         if weights_path is None:
             self.load_network('G', 'best_generalization')
 
@@ -39,6 +39,7 @@ class HourglassModel:
             self.model.load_state_dict(torch.load(weights_path))
 
         self.model.cuda()
+
 
     def save_network(self, network_label, epoch_label):
         save_filename = '_%s_net_%s.pth' % (epoch_label, network_label)

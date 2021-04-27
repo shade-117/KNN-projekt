@@ -137,27 +137,42 @@ if __name__ == '__main__':
         os.makedirs(drive_outputs_path, exist_ok=True)
 
     else:
-        dataset_path = os.path.join('datasets', 'geoPose3K_final_publish')
+        dataset_path = '/storage/brno3-cerit/home/xmojzi08/geoPose3K_final_publish'
         outputs_dir = os.path.join('geopose', 'model_outputs', training_run_id)
 
     os.makedirs(outputs_dir, exist_ok=True)
 
     writer = SummaryWriter(outputs_dir)
 
-    # clear_dataset_dir(ds_dir)
-    # rotate_images(ds_dir)
-
     """ Dataset """
+
     batch_size = 8 if running_in_colab else 2
     train_loader, val_loader = get_dataset_loaders(dataset_path, batch_size, workers=4, fraction=0.01)
+
+    print("loaded dataset")
+
+
+    # setting device on GPU if available, else CPU
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print('Using device:', device)
+    print()
+    
+    #Additional Info when using cuda
+    if device.type == 'cuda':
+        print(torch.cuda.get_device_name(0))
+        print('Memory Usage:')
+        print('Allocated:', round(torch.cuda.memory_allocated(0)/1024**3,1), 'GB')
+        print('Cached:   ', round(torch.cuda.memory_reserved(0)/1024**3,1), 'GB')
+
 
     """ Model """
     megadepth_checkpoints_path = './megadepth/checkpoints/'
 
     with patch.object(sys, 'argv', [curr_script_path]):
         # fix for colab interpreter arguments
-        opt = TrainOptions().parse(quiet=True)  # set CUDA_VISIBLE_DEVICES before import torch
+        opt = TrainOptions().parse()  # set CUDA_VISIBLE_DEVICES before import torch
     hourglass = HourglassModel(opt)
+    print("model loaded")  
 
     """ Training """
     # torch.autograd.set_detect_anomaly(True)  # debugging
@@ -180,6 +195,7 @@ if __name__ == '__main__':
     epoch_mean_loss = -1
 
     step_total = 0
+    print("starting epochs")
     for epoch in range(epochs_trained, epochs_trained + epochs):
         epoch_train_loss_history = []
         epoch_train_data_loss_history = []

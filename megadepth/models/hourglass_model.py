@@ -25,7 +25,7 @@ class HourglassModel:
 
         # must use DataParallel to load weights saved with this setting
         self.model = torch.nn.parallel.DataParallel(self.model, device_ids=[0])
-
+        
         if weights_path is None:
             self.load_network('G', 'best_generalization')
 

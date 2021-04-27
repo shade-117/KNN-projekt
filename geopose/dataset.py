@@ -17,12 +17,13 @@ from skimage.transform import resize
 from torch.utils.data import SubsetRandomSampler
 from scipy.ndimage import rotate
 from torchvision import transforms
+from torchvision import __version__ as torchvision_version
 from turbojpeg import TurboJPEG
 
 # local
 from geopose.util import inpaint_nan
 
-imageio.plugins.freeimage.download()  # download Freelibs for reading PFM files
+#imageio.plugins.freeimage.download()  # download Freelibs for reading PFM files
 
 
 class GeoPoseDataset(torch.utils.data.Dataset):
@@ -132,7 +133,16 @@ class GeoPoseDataset(torch.utils.data.Dataset):
 
         if self.transforms is not None:
             base_img = self.transforms(base_img)
+            # reshape for older torchvision transforms
+            if (torchvision_version == '0.2.2'):
+                depth_img = np.reshape(depth_img,depth_img.shape+(1,))
+                
             depth_img = self.transforms(depth_img)
+            
+            # reshape for older torchvision transforms
+            if (torchvision_version == '0.2.2'):
+                mask_sky = np.reshape(mask_sky,mask_sky.shape+(1,))
+                
             mask_sky = self.transforms(mask_sky)
 
         sample = {
@@ -180,7 +190,7 @@ def clear_dataset_dir(ds_dir):
 
         for curr in os.listdir():
             if not os.path.isdir(curr):
-                continue
+                continue       
 
             # depth map
             pin_path = os.path.join(curr, 'pinhole', depth_pfm + '.gz')  # second depth file
@@ -354,7 +364,7 @@ def get_dataset_loaders(dataset_dir, batch_size=None, workers=4, validation_spli
     if batch_size is not None:
         if len(train_loader.dataset.indices) < batch_size:
             raise UserWarning('Training data subset too small', len(train_loader.dataset.indices))
-
+    
         if len(val_loader.dataset.indices) < batch_size:
             raise UserWarning('Validation data subset too small', len(val_loader.dataset.indices))
 

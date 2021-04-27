@@ -29,7 +29,8 @@ from utils.semseg import visualize_result
 def load_models():
     megadepth_checkpoints_path = './megadepth/checkpoints/'
     opt = EvalOptions().parse(megadepth_checkpoints_path)
-    weights_path = 'megadepth/megadepth/checkpoints/test_local/best_generalization_net_G.pth'
+    # weights_path = 'megadepth/checkpoints/test_local/best_generalization_net_G.pth'
+    weights_path = 'megadepth/checkpoints/test_local/saved_9_1207.7374_net_G.pth'
     model = HourglassModel(opt, weights_path=weights_path)
 
     # input_height = 384
@@ -81,8 +82,9 @@ if __name__ == '__main__':
     ds = dataset.GeoPoseDataset(ds_dir=ds_dir, transforms=data_transform)
 
     # lze iterovat stejně jako přes ds, jen pracuje s batches místo samples
-    loader = torch.utils.data.DataLoader(ds, batch_size=4, num_workers=4, collate_fn=ds.collate)
-
+    # loader = torch.utils.data.DataLoader(ds, batch_size=4, num_workers=4, collate_fn=ds.collate)
+    # train_loader, val_loader = dataset.get_dataset_loaders(ds_dir)
+    np.random.seed(1234)
     indices = np.random.randint(0, len(ds), 50)  # for random photos from dataset
     with torch.no_grad():
         for i, sample in enumerate(ds[indices]):
@@ -95,7 +97,7 @@ if __name__ == '__main__':
             img = torch.unsqueeze(input_image, dim=0)
             # prediction for single sample
             pred = megadepth_model.model.forward(img).detach().cpu()[0]
-            # megadepth_pred = torch.squeeze(torch.exp(pred), dim=0)
+            megadepth_pred = torch.squeeze(torch.exp(pred), dim=0)
 
             depth = depth_img[None, ...]
             mask = mask_img[None, ...]
@@ -103,7 +105,8 @@ if __name__ == '__main__':
             data_loss = rmse_loss(pred, depth, mask, scale_invariant=False)
             data_si_loss = rmse_loss(pred, depth, mask, scale_invariant=True)
             grad_loss = gradient_loss(pred, depth, mask)
-            print(data_loss, data_si_loss, grad_loss)
+            print(f'Data loss: {data_loss.item()},\nData si-loss: {data_si_loss.item()},\nGrad loss: {grad_loss.item()}')
+            print(f'{i}: {dir_path}')
 
             # megadepth_input = transform_image_for_megadepth(input_image, input_height, input_width)
             # megadepth_pred = megadepth_predict(megadepth_model, megadepth_input)
@@ -147,12 +150,11 @@ if __name__ == '__main__':
             # fig.show()
             plt.show()
             # todo save some figures
-            print(i)
-            figure_location = f'./figs/baseline/{i}.png'
-            os.makedirs(os.path.dirname(figure_location), exist_ok=True)
-            fig.savefig(figure_location, dpi=110)
-            if i == 50:
-                break
+            # figure_location = f'./figs/baseline/{i}.png'
+            # os.makedirs(os.path.dirname(figure_location), exist_ok=True)
+            # fig.savefig(figure_location, dpi=110)
+            # if i == 50:
+            #     break
 
             # todo save predicted depths as .npy
             # print(dir_path)

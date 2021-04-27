@@ -190,8 +190,7 @@ def clear_dataset_dir(ds_dir):
 
         for curr in os.listdir():
             if not os.path.isdir(curr):
-                continue
-                
+                continue       
 
             # depth map
             pin_path = os.path.join(curr, 'pinhole', depth_pfm + '.gz')  # second depth file
@@ -361,10 +360,8 @@ def get_dataset_loaders(dataset_dir, batch_size=None, workers=4, validation_spli
     loader_kwargs = {'batch_size': batch_size, 'num_workers': workers, 'pin_memory': True, 'drop_last': False}
     train_loader = torch.utils.data.DataLoader(train_ds, sampler=train_sampler, **loader_kwargs)
     val_loader = torch.utils.data.DataLoader(val_ds, sampler=val_sampler, **loader_kwargs)
-    
 
     if batch_size is not None:
-        print(f'{batch_size} {train_loader}')
         if len(train_loader.dataset.indices) < batch_size:
             raise UserWarning('Training data subset too small', len(train_loader.dataset.indices))
     

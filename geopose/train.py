@@ -149,9 +149,6 @@ if __name__ == '__main__':
     batch_size = 8 if running_in_colab else 2
     train_loader, val_loader = get_dataset_loaders(dataset_path, batch_size, workers=4, fraction=0.01)
 
-    print("loaded dataset")
-
-
     # setting device on GPU if available, else CPU
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print('Using device:', device)
@@ -172,7 +169,6 @@ if __name__ == '__main__':
         # fix for colab interpreter arguments
         opt = TrainOptions().parse()  # set CUDA_VISIBLE_DEVICES before import torch
     hourglass = HourglassModel(opt)
-    print("model loaded")  
 
     """ Training """
     # torch.autograd.set_detect_anomaly(True)  # debugging
@@ -195,7 +191,7 @@ if __name__ == '__main__':
     epoch_mean_loss = -1
 
     step_total = 0
-    print("starting epochs")
+
     for epoch in range(epochs_trained, epochs_trained + epochs):
         epoch_train_loss_history = []
         epoch_train_data_loss_history = []

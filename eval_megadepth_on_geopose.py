@@ -27,9 +27,13 @@ from utils.semseg import visualize_result
 
 
 def load_models():
+    """
+    This function is obsolete now
+    :return:
+    """
     megadepth_checkpoints_path = './megadepth/checkpoints/'
     opt = EvalOptions().parse(megadepth_checkpoints_path)
-    weights_path = 'megadepth/megadepth/checkpoints/test_local/best_generalization_net_G.pth'
+    weights_path = 'megadepth/checkpoints/test_local/best_generalization_net_G.pth'
     model = HourglassModel(opt, weights_path=weights_path)
 
     # input_height = 384
@@ -63,7 +67,10 @@ def load_models():
 
 
 if __name__ == '__main__':
-    megadepth_model, semseg_model = load_models()
+    # megadepth_model, semseg_model = load_models()
+    opt = EvalOptions().parse()
+    weights_path = 'megadepth/checkpoints/test_local/best_generalization_net_G.pth'
+    megadepth_model = HourglassModel(opt, weights_path=weights_path)
     megadepth_model.switch_to_eval()
 
     # todo input size for megadepth
@@ -82,7 +89,7 @@ if __name__ == '__main__':
 
     # lze iterovat stejně jako přes ds, jen pracuje s batches místo samples
     loader = torch.utils.data.DataLoader(ds, batch_size=4, num_workers=4, collate_fn=ds.collate)
-
+    np.random.seed(1234)  # to check still the same images
     indices = np.random.randint(0, len(ds), 50)  # for random photos from dataset
     with torch.no_grad():
         for i, sample in enumerate(ds[indices]):
@@ -103,7 +110,7 @@ if __name__ == '__main__':
             data_loss = rmse_loss(pred, depth, mask, scale_invariant=False)
             data_si_loss = rmse_loss(pred, depth, mask, scale_invariant=True)
             grad_loss = gradient_loss(pred, depth, mask)
-            print(data_loss, data_si_loss, grad_loss)
+            print(f'Data loss: {data_loss}\nData-si loss: {data_si_loss}\nGrad loss: {grad_loss}')
 
             # megadepth_input = transform_image_for_megadepth(input_image, input_height, input_width)
             # megadepth_pred = megadepth_predict(megadepth_model, megadepth_input)
@@ -139,6 +146,7 @@ if __name__ == '__main__':
             # plt.show()
 
             # # todo show 4 subplots: original image, GT, depth map, depth map no sky
+            print(i)
             fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(nrows=2, ncols=2)
             ax1.imshow(sample['img'].permute(1, 2, 0).numpy())
             ax2.imshow(depth_img[0])
@@ -147,10 +155,10 @@ if __name__ == '__main__':
             # fig.show()
             plt.show()
             # todo save some figures
-            print(i)
-            figure_location = f'./figs/baseline/{i}.png'
-            os.makedirs(os.path.dirname(figure_location), exist_ok=True)
-            fig.savefig(figure_location, dpi=110)
+            # print(i)
+            # figure_location = f'./figs/baseline/{i}.png'
+            # os.makedirs(os.path.dirname(figure_location), exist_ok=True)
+            # fig.savefig(figure_location, dpi=110)
             if i == 50:
                 break
 

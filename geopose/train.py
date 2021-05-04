@@ -18,6 +18,8 @@ from torchvision import transforms
 import pytorch_lightning as pl
 from pytorch_lightning import loggers
 
+from torchsummary import summary
+
 # fix for local import problems - add all local directories
 sys_path_extension = [os.getcwd()]  # + [d for d in os.listdir() if os.path.isdir(d)]
 sys.path.extend(sys_path_extension)
@@ -169,13 +171,12 @@ if __name__ == '__main__':
         'running_in_colab': running_in_colab,
         'drive_outputs_path': drive_outputs_path
     }
-    hourglass = HourglassModel(opt, **training_kwargs)
-
+    weights_path = 'megadepth/checkpoints/test_local/best_generalization_net_G.pth'
+    hourglass = HourglassModel(opt, weights_path=weights_path, **training_kwargs)
     """ Training """
     # torch.autograd.set_detect_anomaly(True)  # debugging
     torch.backends.cudnn.enabled = True
     torch.backends.cudnn.benchmark = True  # better performance
-
     trainer = pl.Trainer(gpus=1,
                          # auto_scale_batch_size=True,
                          precision=16,

@@ -69,7 +69,8 @@ if __name__ == '__main__':
     """ Input sizes """
     input_height = 384
     input_width = 512
-    ds_dir = './datasets/geoPose3K_final_publish/'
+    # ds_dir = '/storage/brno3-cerit/home/xmojzi08/geoPose3K_final_publish'
+    ds_dir = 'datasets/geoPose3K_final_publish/'
     # dataset.clear_dataset_dir(ds_dir)
 
     data_transform = transforms.Compose([transforms.ToTensor(),

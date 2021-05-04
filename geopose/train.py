@@ -22,8 +22,8 @@ from geopose.dataset import get_dataset_loaders
 from geopose.losses import rmse_loss, gradient_loss
 from geopose.util import running_mean
 
-from megadepth.options.train_options import TrainOptions
-from megadepth.models.hourglass_model import HourglassModel
+from geopose.options.train_options import TrainOptions
+from geopose.model.hourglass_model import HourglassModel
 
 # configuration flags
 running_in_colab = False
@@ -138,6 +138,7 @@ if __name__ == '__main__':
 
     else:
         dataset_path = '/storage/brno3-cerit/home/xmojzi08/geoPose3K_final_publish'
+        # dataset_path = 'datasets/geoPose3K_final_publish'
         outputs_dir = os.path.join('geopose', 'model_outputs', training_run_id)
 
     os.makedirs(outputs_dir, exist_ok=True)
@@ -163,12 +164,11 @@ if __name__ == '__main__':
 
 
     """ Model """
-    megadepth_checkpoints_path = './megadepth/checkpoints/'
-
+    weights_path = 'geopose/checkpoints/best_generalization_net_G.pth'
     with patch.object(sys, 'argv', [curr_script_path]):
         # fix for colab interpreter arguments
         opt = TrainOptions().parse()  # set CUDA_VISIBLE_DEVICES before import torch
-    hourglass = HourglassModel(opt)
+    hourglass = HourglassModel(opt, weights_path=weights_path)
 
     """ Training """
     # torch.autograd.set_detect_anomaly(True)  # debugging

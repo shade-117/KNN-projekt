@@ -40,6 +40,9 @@ batch_size = None
 
 
 def plot_training_loss(train_loss_history, show=True, save=True):
+    if not show and not save:
+        return
+
     fig, ax = plt.subplots()
 
     ax.plot(train_loss_history)
@@ -63,6 +66,9 @@ def plot_training_loss(train_loss_history, show=True, save=True):
 
 
 def plot_val_losses(data_history, data_si_history, grad_history, show=True, save=True):
+    if not show and not save:
+        return
+
     fig, ax = plt.subplots()
 
     ax.plot(data_history)
@@ -147,21 +153,20 @@ if __name__ == '__main__':
 
     """ Dataset """
 
-    batch_size = 8 if running_in_colab else 2
-    train_loader, val_loader = get_dataset_loaders(dataset_path, batch_size, workers=4, fraction=0.01)
+    batch_size = 8 if running_in_colab else 8
+    train_loader, val_loader = get_dataset_loaders(dataset_path, batch_size, workers=8, fraction=0.01)
 
     # setting device on GPU if available, else CPU
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print('Using device:', device)
     print()
-    
-    #Additional Info when using cuda
+
+    # Additional Info when using cuda
     if device.type == 'cuda':
         print(torch.cuda.get_device_name(0))
         print('Memory Usage:')
-        print('Allocated:', round(torch.cuda.memory_allocated(0)/1024**3,1), 'GB')
-        print('Cached:   ', round(torch.cuda.memory_reserved(0)/1024**3,1), 'GB')
-
+        print('Allocated:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
+        print('Cached:   ', round(torch.cuda.memory_reserved(0) / 1024 ** 3, 1), 'GB')
 
     """ Model """
     weights_path = 'geopose/checkpoints/best_generalization_net_G.pth'
@@ -178,7 +183,7 @@ if __name__ == '__main__':
 
     lr = opt.lr * 100
     optimizer = torch.optim.Adam(hourglass.model.parameters(), lr=lr, betas=(opt.beta1, 0.999))
-    epochs = 20
+    epochs = 200
 
     epochs_trained = 0
     train_loss_history = []  # combined loss
@@ -314,7 +319,7 @@ if __name__ == '__main__':
         if stop_training:
             break
 
-    epochs_trained += floor(len(train_loss_history) / len(train_loader.dataset))
+    epochs_trained += epochs
 
     writer.add_hparams({'lr': lr, 'epochs': epochs_trained},
                        {'hparam/loss': epoch_mean_loss})

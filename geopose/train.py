@@ -222,6 +222,11 @@ if __name__ == '__main__':
                     depths = batch['depth'].cuda()
                     masks = batch['mask'].cuda()
                     paths = batch['path']
+                    """
+                    # fov_embed.fov_id = batch['fov'].cuda()
+                    # todo fov -- načíst v rámci batche i field of view data a přiřadit je jako atribut custom vrstvě FOV
+                    """
+
 
                     # batch prediction
                     preds = hourglass.model.forward(imgs)

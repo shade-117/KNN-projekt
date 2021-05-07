@@ -154,7 +154,8 @@ if __name__ == '__main__':
     """ Dataset """
 
     batch_size = 8 if running_in_colab else 8
-    train_loader, val_loader = get_dataset_loaders(dataset_path, batch_size, workers=8, fraction=0.01)
+    train_loader, val_loader = get_dataset_loaders(dataset_path, batch_size, workers=8, fraction=1,
+                                                   validation_split=0.2)
 
     # setting device on GPU if available, else CPU
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -181,7 +182,7 @@ if __name__ == '__main__':
     torch.backends.cudnn.benchmark = True  # better performance
     scaler = torch.cuda.amp.GradScaler()
 
-    lr = opt.lr * 100
+    lr = opt.lr
     optimizer = torch.optim.Adam(hourglass.model.parameters(), lr=lr, betas=(opt.beta1, 0.999))
     epochs = 200
 
@@ -222,6 +223,7 @@ if __name__ == '__main__':
                     depths = batch['depth'].cuda()
                     masks = batch['mask'].cuda()
                     paths = batch['path']
+                    fovs = batch['fov'].cuda()
                     """
                     # fov_embed.fov_id = batch['fov'].cuda()
                     # todo fov -- načíst v rámci batche i field of view data a přiřadit je jako atribut custom vrstvě FOV
@@ -231,12 +233,10 @@ if __name__ == '__main__':
                     # batch prediction
                     preds = hourglass.model.forward(imgs)
                     preds = torch.squeeze(preds, dim=1)
-
-                    # # pridane pre logaritmovanie
-                    # preds = torch.squeeze(torch.exp(preds), dim=0)
-                    # preds_t = torch.log(preds + 2)
-                    # depths_t = torch.log(depths + 2)
-                    # batch_loss = rmse_loss(preds_t, depths_t, masks, scale_invariant=scale_invariancy)
+                    # reshape fovs
+                    fovs = fovs.reshape(batch_size, 1, 1)
+                    # multiply batch by corresponding fov
+                    preds = preds * (1/fovs)
 
                     data_loss = rmse_loss(preds, depths, masks, scale_invariant=scale_invariancy)
                     grad_loss = gradient_loss(preds, depths, masks)
@@ -274,9 +274,9 @@ if __name__ == '__main__':
                                                   'gradient': np.mean(epoch_train_grad_loss_history), }, epoch)
 
         """Save weights and loss plot"""
-        if epoch % 20 == 19:
-            save_weights(hourglass.model, epoch, epoch_mean_loss, outputs_dir)
-            plot_training_loss(train_loss_history, show=running_in_colab, save=running_in_colab)
+        # if epoch % 20 == 19:
+        save_weights(hourglass.model, epoch, epoch_mean_loss, outputs_dir)
+            # plot_training_loss(train_loss_history, show=running_in_colab, save=running_in_colab)
 
         """Validation set evaluation"""
         hourglass.model.eval()
@@ -319,7 +319,7 @@ if __name__ == '__main__':
                                                 'data_si': np.mean(epoch_val_loss_data_si_history),
                                                 'gradient': np.mean(epoch_val_loss_grad_history), }, epoch)
 
-        plot_val_losses(val_loss_data_history, val_loss_data_si_history, val_loss_grad_history)
+        #plot_val_losses(val_loss_data_history, val_loss_data_si_history, val_loss_grad_history)
 
         if stop_training:
             break

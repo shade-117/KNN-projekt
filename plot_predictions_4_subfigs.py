@@ -62,7 +62,7 @@ def load_models(weights_path):
 
 if __name__ == '__main__':
     # weights_path = 'geopose/checkpoints/saved_9_1207.7374_net_G.pth'
-    weights_path = 'geopose/checkpoints/best_generalization_net_G.pth'
+    weights_path = 'geopose/checkpoints/weights_29_5214.pth'
     megadepth_model, semseg_model = load_models(weights_path)
     megadepth_model.switch_to_eval()
 
@@ -93,12 +93,15 @@ if __name__ == '__main__':
             mask_img = sample['mask']
             depth_img = sample['depth']
             dir_path = sample['path']
+            fov = float(sample['fov'])
 
             img = torch.unsqueeze(input_image, dim=0)
             # prediction for single sample
             pred = megadepth_model.model.forward(img).detach().cpu()[0]
             """ Exp the output - was used by megadepth """
             # pred = torch.exp(pred)
+
+            # pred = pred * 1/fov
 
             depth = depth_img[None, ...]
             mask = mask_img[None, ...]

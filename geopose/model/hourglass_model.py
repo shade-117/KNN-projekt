@@ -11,7 +11,6 @@ import torch.nn as nn
 from torch.autograd import Variable
 from torch.nn.parallel import DistributedDataParallel, DataParallel
 
-
 class HourglassModel:
     @staticmethod
     def name():
@@ -25,7 +24,7 @@ class HourglassModel:
         self.save_dir = os.path.join(opt.checkpoints_dir, opt.name)
 
         print("============= LOADING Hourglass NETWORK =============")
-        self.model = hg_model
+        self.model = hg_model_new
 
         # must use DataParallel to load weights saved with this setting
         self.model = torch.nn.parallel.DataParallel(self.model, device_ids=[0])
@@ -110,16 +109,16 @@ class FOV(nn.Module):
 """
 
 
-def bn(c):
-    return nn.BatchNorm2d(c, 1e-05, 0.1, True)  # změnil jsem 4.param z False na True, otestovat změnu
+def bn(c, affine=False):
+    return nn.BatchNorm2d(c, 1e-05, 0.1, affine)
 
 
 def conv11(c_in, c_out):
     return nn.Conv2d(c_in, c_out, (11, 11), (1, 1), (5, 5)), bn(c_out), nn.ReLU()
 
 
-def conv7(c_in, c_out):
-    return nn.Conv2d(c_in, c_out, (7, 7), (1, 1), (3, 3)), bn(c_out), nn.ReLU()
+def conv7(c_in, c_out, bn_affine=False):
+    return nn.Conv2d(c_in, c_out, (7, 7), (1, 1), (3, 3)), bn(c_out, bn_affine), nn.ReLU()
 
 
 def conv5(c_in, c_out):
@@ -136,7 +135,7 @@ def conv1(c_in, c_out):
 # @formatter:off
 # noinspection DuplicatedCode
 hg_model_new = nn.Sequential(
-    *conv7(3, 128), nn.Sequential(
+    *conv7(3, 128, bn_affine=True), nn.Sequential(
         Map(lambda x: x,  # ConcatTable,
             nn.Sequential(
                 nn.MaxPool2d((2, 2), (2, 2)),

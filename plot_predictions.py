@@ -142,12 +142,22 @@ if __name__ == '__main__':
             diff = megadepth_pred_raw.squeeze() - depth_img[0].numpy()
 
             """ show 4 subplots: original image, GT, depth map, depth map no sky """
+            raise ValueError()
             fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(nrows=2, ncols=2)
+
             ax1.imshow(sample['img'].permute(1, 2, 0).numpy())
+            ax1.set_title('Input Image')
             ax2.imshow(depth_img[0])
+            ax2.set_title('Depth GT')
             ax3.imshow(diff, cmap=plt.get_cmap('RdBu'))
+            ax3.set_title('Prediction/GT Difference')
             ax4.imshow(megadepth_pred_raw.squeeze())
-            # fig.show()
+            ax4.set_title('Depth Prediction')
+
+            for ax in fig.axes:
+                ax.axis('off')
+            fig.tight_layout()
+
             plt.show()
 
             """ save the plots """

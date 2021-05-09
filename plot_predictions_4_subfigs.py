@@ -62,7 +62,7 @@ def load_models(weights_path):
 
 if __name__ == '__main__':
     # weights_path = 'geopose/checkpoints/saved_9_1207.7374_net_G.pth'
-    weights_path = 'geopose/checkpoints/weights_29_5214.pth'
+    weights_path = 'geopose/checkpoints/weights_66_3289.pth'
     megadepth_model, semseg_model = load_models(weights_path)
     megadepth_model.switch_to_eval()
 

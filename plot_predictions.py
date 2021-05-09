@@ -142,7 +142,6 @@ if __name__ == '__main__':
             diff = megadepth_pred_raw.squeeze() - depth_img[0].numpy()
 
             """ show 4 subplots: original image, GT, depth map, depth map no sky """
-            raise ValueError()
             fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(nrows=2, ncols=2)
 
             ax1.imshow(sample['img'].permute(1, 2, 0).numpy())

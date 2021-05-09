@@ -186,7 +186,7 @@ if __name__ == '__main__':
 
     lr = opt.lr
     optimizer = torch.optim.Adam(hourglass.model.parameters(), lr=lr, betas=(opt.beta1, 0.999))
-    epochs = 200
+    epochs = 10
 
     epochs_trained = 0
     train_loss_history = []  # combined loss

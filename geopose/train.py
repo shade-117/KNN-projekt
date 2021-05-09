@@ -295,11 +295,17 @@ if __name__ == '__main__':
                 depths = batch['depth'].cuda()
                 masks = batch['mask'].cuda()
                 paths = batch['path']
+                fovs = batch['fov'].cuda()
 
                 preds = hourglass.model.forward(imgs)
                 preds = preds.squeeze(dim=1)
                 depths = depths.squeeze(dim=1)
                 masks = masks.squeeze(dim=1)
+
+                # reshape fovs
+                fovs = fovs.reshape(batch_size, 1, 1)
+                # multiply batch by corresponding fov
+                preds = preds * (1 / fovs)
 
                 data_loss = rmse_loss(preds, depths, masks, scale_invariant=False)
                 data_si_loss = rmse_loss(preds, depths, masks, scale_invariant=True)
@@ -346,11 +352,17 @@ if __name__ == '__main__':
             depths = batch['depth'].cuda()
             masks = batch['mask'].cuda()
             paths = batch['path']
+            fovs = batch['fov'].cuda()
 
             preds = hourglass.model.forward(imgs)
             preds = preds.squeeze(dim=1)
             depths = depths.squeeze(dim=1)
             masks = masks.squeeze(dim=1)
+
+            # reshape fovs
+            fovs = fovs.reshape(batch_size, 1, 1)
+            # multiply batch by corresponding fov
+            preds = preds * (1 / fovs)
 
             data_loss = rmse_loss(preds, depths, masks, scale_invariant=False)
             data_si_loss = rmse_loss(preds, depths, masks, scale_invariant=True)

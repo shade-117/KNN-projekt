@@ -1,6 +1,12 @@
+import os
+import sys
+
 import torch
 import torch.nn as nn
+
+
 # For NormieNet
+
 
 #  code taken and slightly modified from: https://github.com/dfan/single-image-surface-normal-estimation
 # Implementation of NormieNet: nickname for my altered version of the architecture published by Chen, et al. in NIPS 2016.
@@ -13,12 +19,12 @@ class NormieNet(nn.Module):
         module_2 = Module2(module_3)
         module_1 = Module1(module_2)
         self.hourglass = nn.Sequential(
-                          nn.Conv2d(in_channels=3, out_channels=128, kernel_size=7, stride=1, padding=3), # toto odpoveda
-                          nn.BatchNorm2d(128),
-                          nn.ReLU(),
-                          module_1,
-                          nn.Conv2d(in_channels=64, out_channels=1, kernel_size=3, stride=1, padding=1) # tu bude 1 vystupny kanal
-                        )
+            nn.Conv2d(in_channels=3, out_channels=128, kernel_size=7, stride=1, padding=3),  # toto odpoveda
+            nn.BatchNorm2d(128),
+            nn.ReLU(),
+            module_1,
+            nn.Conv2d(in_channels=64, out_channels=1, kernel_size=3, stride=1, padding=1)  # tu bude 1 vystupny kanal
+        )
 
     def forward(self, x):
         out = self.hourglass(x)

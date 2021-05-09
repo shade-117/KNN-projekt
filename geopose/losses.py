@@ -5,9 +5,6 @@ def rmse_loss(pred, gt, mask=None, scale_invariant=True):
     if mask is None:
         mask = torch.zeros(pred.shape) + 1
 
-    gt = gt.squeeze(dim=1)
-    mask = mask.squeeze(dim=1)
-
     n = mask.sum(dim=2).sum(dim=1)
 
     diff = pred - gt
@@ -57,10 +54,6 @@ def gradient_loss(pred, gt, mask=None):
 
     if mask is None:
         mask = torch.zeros(pred.shape) + 1
-
-    # fix for double-batched dimensions: pred = [2, 384, 512], gt = mask = [2, 1, 384, 512]
-    gt = gt.squeeze(dim=1)
-    mask = mask.squeeze(dim=1)
 
     pred_div2 = pred[:, ::2, ::2]
     pred_div4 = pred_div2[:, ::2, ::2]

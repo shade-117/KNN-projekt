@@ -38,24 +38,12 @@ if __name__ == '__main__':
                                          #                      std=[0.229, 0.224, 0.225])
                                          ])
 
-    ds = GeoPoseDataset(ds_dir=ds_dir, verbose=True)
+    from geopose.dataset import get_dataset_loaders
 
-    # batch size and num_workers are chosen arbitrarily, try your own ideas
-    loader = torch.utils.data.DataLoader(ds, batch_size=1, num_workers=4)
+    datasets = get_dataset_loaders(ds_dir, batch_size=1, workers=0, validation_split=0.2, shuffle=False, fraction=1.0, random=False)
 
-    """
-    100 batches * 4 samples, 4 workers => 18s, 
-    ..?
-    120 batches * 4 samples, 4 workers => 147s, 
-    100 batches * 8 samples, 4 workers => 145s
-    
-    """
 
     if False:
-        # see how long it takes to load data
-        # can be run with ds (returning samples) or loader (returning batches)
-        iter_ds(loader)
-
         # single element directly from dataset
         a = ds[0]
 
@@ -64,31 +52,29 @@ if __name__ == '__main__':
 
         # dataset also supports slicing
         sample = ds[0:3]
-    ds = GeoPoseDataset(ds_dir=ds_dir, verbose=True)
 
-    for sample in ds:
-        continue
-        # img, depth, mask, path
-        depth = sample['depth']
+        for sample in ds:
+            continue
+            # img, depth, mask, path
+            depth = sample['depth']
 
-        # f, ax = plt.subplots(1, 3)
-        # ax[0].imshow(img)
-        # ax[1].imshow(depth)
-        # ax[2].imshow(mask)
-        # f.show()
+            # f, ax = plt.subplots(1, 3)
+            # ax[0].imshow(img)
+            # ax[1].imshow(depth)
+            # ax[2].imshow(mask)
+            # f.show()
 
     if False:
+        plt.imshow(pred - depth)
+        plt.colorbar()
+        plt.show()
 
-            plt.imshow(pred - depth)
-            plt.colorbar()
-            plt.show()
+        depth = resize(depth, pred.shape)
 
-            depth = resize(depth, pred.shape)
+        log_gt = torch.Tensor(np.log(depth + 2))
+        log_prediction_d = torch.Tensor(np.log(depth + 2000))
 
-            log_gt = torch.Tensor(np.log(depth + 2))
-            log_prediction_d = torch.Tensor(np.log(depth + 2000))
-
-            print(rmse_loss(log_prediction_d, log_gt))
+        print(rmse_loss(log_prediction_d, log_gt))
 
     if False:
         # playing around with RMSE
@@ -107,25 +93,25 @@ if __name__ == '__main__':
         mask = torch.Tensor(mask)
         # log_prediction_d = torch.Tensor(pred)
 
+    if False:
+        # img, depth, path = ds[0]
 
-    # img, depth, path = ds[0]
+        # path = 'datasets/geoPose3K_mini/28561570606/distance_crop.pfm'
+        path = 'datasets/geoPose3K_final_publish/flickr_sge_10163768706_01e5d4a0a6_o_grid_1_0.004_0.004.xml_1_1_1.1327/distance_crop.pfm'
+        depth_img = imageio.imread(path, format='pfm')
+        depth_img = np.flipud(np.array(depth_img)).copy()
 
-    # path = 'datasets/geoPose3K_mini/28561570606/distance_crop.pfm'
-    path = 'datasets/geoPose3K_final_publish/flickr_sge_10163768706_01e5d4a0a6_o_grid_1_0.004_0.004.xml_1_1_1.1327/distance_crop.pfm'
-    depth_img = imageio.imread(path, format='pfm')
-    depth_img = np.flipud(np.array(depth_img)).copy()
+        dc = depth_img.copy()
 
-    dc = depth_img.copy()
+        depth_img[np.isnan(depth_img)] = np.nanmean(depth_img)
 
-    depth_img[np.isnan(depth_img)] = np.nanmean(depth_img)
+        # find connected components
 
-    # find connected components
+        # for every component:
+        #   replace by mean of component neighborhood
 
-    # for every component:
-    #   replace by mean of component neighborhood
+        plt.imshow(depth_img)
+        plt.show()
 
-    plt.imshow(depth_img)
-    plt.show()
-
-    np.save('nan3x.npy', depth_img)
+        np.save('nan3x.npy', depth_img)
 

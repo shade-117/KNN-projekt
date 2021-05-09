@@ -11,6 +11,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 from torch.nn.parallel import DistributedDataParallel, DataParallel
 
+
 class HourglassModel:
     @staticmethod
     def name():
@@ -67,6 +68,7 @@ class HourglassModel:
 
     def switch_to_eval(self):
         self.model.eval()
+
 
 class LambdaBase(nn.Sequential):
     def __init__(self, fn, *args):
@@ -131,6 +133,7 @@ def conv3(c_in, c_out):
 
 def conv1(c_in, c_out):
     return nn.Conv2d(c_in, c_out, (1, 1)), bn(c_out), nn.ReLU()
+
 
 # @formatter:off
 # noinspection DuplicatedCode

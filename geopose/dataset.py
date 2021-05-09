@@ -23,7 +23,8 @@ from turbojpeg import TurboJPEG
 # local
 from geopose.util import inpaint_nan
 
-#imageio.plugins.freeimage.download()  # download Freelibs for reading PFM files
+
+# imageio.plugins.freeimage.download()  # download Freelibs for reading PFM files
 
 
 class GeoPoseDataset(torch.utils.data.Dataset):
@@ -47,9 +48,9 @@ class GeoPoseDataset(torch.utils.data.Dataset):
         # list only directories, sorting not really necessary
         listed_data_dir = [d for d in sorted(os.listdir(ds_dir)) if os.path.isdir(os.path.join(ds_dir, d))]
 
-        if fraction:
+        if fraction != 1.0:
             end = int(ceil(len(listed_data_dir) * fraction))
-            print('Using only {} out of {} dataset samples'.format(end, len(listed_data_dir)))
+            print('Using {} out of {} dataset samples'.format(end, len(listed_data_dir)))
             listed_data_dir = listed_data_dir[:end]
 
         for curr_dir in listed_data_dir:
@@ -135,14 +136,14 @@ class GeoPoseDataset(torch.utils.data.Dataset):
             base_img = self.transforms(base_img)
             # reshape for older torchvision transforms
             if (torchvision_version == '0.2.2'):
-                depth_img = np.reshape(depth_img,depth_img.shape+(1,))
-                
+                depth_img = np.reshape(depth_img, depth_img.shape + (1,))
+
             depth_img = self.transforms(depth_img)
-            
+
             # reshape for older torchvision transforms
             if (torchvision_version == '0.2.2'):
-                mask_sky = np.reshape(mask_sky,mask_sky.shape+(1,))
-                
+                mask_sky = np.reshape(mask_sky, mask_sky.shape + (1,))
+
             mask_sky = self.transforms(mask_sky)
 
         sample = {
@@ -190,9 +191,9 @@ def clear_dataset_dir(ds_dir):
 
         for curr in os.listdir():
             if not os.path.isdir(curr):
-                continue       
+                continue
 
-            # depth map
+                # depth map
             pin_path = os.path.join(curr, 'pinhole', depth_pfm + '.gz')  # second depth file
             if os.path.exists(pin_path):
                 shutil.move(pin_path, os.path.join(curr, 'pinhole_' + depth_pfm + '.gz'))
@@ -342,11 +343,27 @@ def rotate_images(ds_dir='datasets/geoPose3K_final_publish/', show_cv=False, sho
         os.chdir(old_cwd)
 
 
-def get_dataset_loaders(dataset_dir, batch_size=None, workers=4, validation_split=.1, shuffle=False, fraction=1.0):
+def get_dataset_loaders(dataset_dir, batch_size=None, workers=4, validation_split=.2, shuffle=False, fraction=1.0,
+                        random=False):
+    """
+
+    """
+    test_split = validation_split / 2
+    train_split = 1 - validation_split - test_split
     ds = GeoPoseDataset(ds_dir=dataset_dir, transforms=transforms.ToTensor(), verbose=False, fraction=fraction)
-    split_index = int(len(ds) * (1 - validation_split))
-    train_ds, val_ds = torch.utils.data.random_split(ds, [split_index, len(ds) - split_index])
-    # todo test set
+
+    train_len = int(train_split * len(ds))
+    val_len = int(validation_split * len(ds))
+    print(f'Train: {train_len}, Val: {val_len}, Test: {len(ds) - train_len - val_len}')
+
+    if not random:
+        train_ds, val_ds, test_ds = torch.utils.data.random_split(ds,
+                                                                  [train_len, val_len, len(ds) - train_len - val_len],
+                                                                  generator=torch.Generator().manual_seed(42))
+    else:
+        train_ds = torch.utils.data.Subset(ds, np.arange(0, train_len))
+        val_ds = torch.utils.data.Subset(ds, np.arange(train_len, train_len + val_len))
+        test_ds = torch.utils.data.Subset(ds, np.arange(train_len + val_len, len(ds)))
 
     train_sampler = None
     val_sampler = None
@@ -360,12 +377,16 @@ def get_dataset_loaders(dataset_dir, batch_size=None, workers=4, validation_spli
     loader_kwargs = {'batch_size': batch_size, 'num_workers': workers, 'pin_memory': True, 'drop_last': False}
     train_loader = torch.utils.data.DataLoader(train_ds, sampler=train_sampler, **loader_kwargs)
     val_loader = torch.utils.data.DataLoader(val_ds, sampler=val_sampler, **loader_kwargs)
+    test_loader = torch.utils.data.DataLoader(test_ds, sampler=val_sampler, **loader_kwargs)
 
     if batch_size is not None:
         if len(train_loader.dataset.indices) < batch_size:
             raise UserWarning('Training data subset too small', len(train_loader.dataset.indices))
-    
+
         if len(val_loader.dataset.indices) < batch_size:
             raise UserWarning('Validation data subset too small', len(val_loader.dataset.indices))
 
-    return train_loader, val_loader
+        if len(test_loader.dataset.indices) < batch_size:
+            raise UserWarning('Test data subset too small', len(val_loader.dataset.indices))
+
+    return train_loader, val_loader, test_loader

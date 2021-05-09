@@ -9,6 +9,22 @@
 * [GeoPose3k](http://cphoto.fit.vutbr.cz/geoPose3K/)
 * [megadepth paper](https://www.cs.cornell.edu/projects/megadepth/)
 
+# Project structure
+Some parts of this project are taken from other repositories:
+* `semseg/` - this directory is taken from <https://github.com/CSAILVision/semantic-segmentation-pytorch>
+               and it's not used in our implementation, we only used it at the beginning
+* `geopose/model/houglass_model.py` - contains the original model from <https://github.com/zhengqili/MegaDepth>,
+                                      we rewrote it because it was pretty ugly
+* `geopose/model/new_model.py` - contains the same model, but implemented in pytorch from scratch,
+                                 inspired by <https://github.com/dfan/single-image-surface-normal-estimation>
+* `geopose/options` - option for model from <https://github.com/zhengqili/MegaDepth>
+
+Other files are scripts implemented by us. Main scripts are:
+* `geopose/train.py` - training script, containing also evaluating on test dataset
+* `geopose/dataset.py` - script containing DataLoader class
+* `geopose/losses.py` - script containing implementation of loss functions
+* and other minor utility scripts
+
 ### Notes
 
 Run from root repo directory (KNN-Projekt).

@@ -66,8 +66,9 @@ def load_models(weights_path=None):
 
 if __name__ == '__main__':
     # weights_path = 'geopose/checkpoints/saved_9_1207.7374_net_G.pth'
-    # weights_path = 'geopose/checkpoints/weights_199_1200.pth'
-    weights_path = 'geopose/checkpoints/weights_66_3289.pth'
+    weights_path = 'geopose/checkpoints/weights_199_1200.pth'
+    # weights_path = 'geopose/checkpoints/weights_9_4023.pth'
+    # weights_path = 'geopose/checkpoints/weights_9_2885.pth'
     megadepth_model, semseg_model = load_models(weights_path)
     megadepth_model.switch_to_eval()
 
@@ -158,6 +159,7 @@ if __name__ == '__main__':
             fig.tight_layout()
 
             plt.show()
+            # fig.savefig(f'plot_comparison_{dir_path.split("/")[-1]}.pdf')
 
             """ save the plots """
             # figure_location = f'./figs/baseline/{i}.png'

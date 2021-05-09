@@ -62,6 +62,7 @@ def load_models(weights_path):
 
 if __name__ == '__main__':
     # weights_path = 'geopose/checkpoints/saved_9_1207.7374_net_G.pth'
+    # weights_path = 'geopose/checkpoints/weights_199_1200.pth'
     weights_path = 'geopose/checkpoints/weights_66_3289.pth'
     megadepth_model, semseg_model = load_models(weights_path)
     megadepth_model.switch_to_eval()
@@ -101,7 +102,7 @@ if __name__ == '__main__':
             """ Exp the output - was used by megadepth """
             # pred = torch.exp(pred)
 
-            # pred = pred * 1/fov
+            pred = pred * 1/fov
 
             depth = depth_img[None, ...]
             mask = mask_img[None, ...]
@@ -131,12 +132,15 @@ if __name__ == '__main__':
             # applies it in place
             # apply_sky_mask(megadepth_pred.squeeze(), sky_mask)
 
+            """ Get diff GT - pred """
+            diff = megadepth_pred_raw.squeeze() - depth_img[0].numpy()
+
             """ show 4 subplots: original image, GT, depth map, depth map no sky """
             fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(nrows=2, ncols=2)
             ax1.imshow(sample['img'].permute(1, 2, 0).numpy())
             ax2.imshow(depth_img[0])
-            ax3.imshow(megadepth_pred_raw.squeeze())
-            ax4.imshow(megadepth_pred.squeeze())
+            ax3.imshow(diff, cmap=plt.get_cmap('RdBu'))
+            ax4.imshow(megadepth_pred_raw.squeeze())
             # fig.show()
             plt.show()
 

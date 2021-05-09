@@ -25,9 +25,13 @@ from utils.process_images import get_sky_mask, transform_image_for_megadepth, me
 from utils.semseg import visualize_result
 
 
-def load_models(weights_path):
+def load_models(weights_path=None):
     opt = EvalOptions().parse()
-    # weights_path = 'megadepth/checkpoints/test_local/best_generalization_net_G.pth'
+
+    if weights_path is None:
+        # default - MegaDepth pretrained model
+        weights_path = 'geopose/checkpoints/best_generalization_net_G.pth'
+
     model = HourglassModel(opt, weights_path=weights_path)
 
     # input_height = 384
@@ -98,7 +102,7 @@ if __name__ == '__main__':
 
             img = torch.unsqueeze(input_image, dim=0)
             # prediction for single sample
-            pred = megadepth_model.model.forward(img).detach().cpu()[0]
+            pred = megadepth_model.model.forward(img).detach().cpu()
             """ Exp the output - was used by megadepth """
             # pred = torch.exp(pred)
 
@@ -110,7 +114,9 @@ if __name__ == '__main__':
             data_loss = rmse_loss(pred, depth, mask, scale_invariant=False)
             data_si_loss = rmse_loss(pred, depth, mask, scale_invariant=True)
             grad_loss = gradient_loss(pred, depth, mask)
-            print(f'Data loss: {data_loss.item()},\nData si-loss: {data_si_loss.item()},\nGrad loss: {grad_loss.item()}')
+            print(f'Data loss: {data_loss.item()}'
+                  f'Data si-loss: {data_si_loss.item()}'
+                  f'Grad loss: {grad_loss.item()}')
             print(f'{i}: {dir_path}')
 
             megadepth_pred = np.copy(pred)
@@ -123,7 +129,7 @@ if __name__ == '__main__':
             """ Get sky mask from ground truth """
             sky_mask = depth_img == -1
             idx = (sky_mask == True)
-            megadepth_pred[idx] = -1
+            megadepth_pred[0, idx] = -1
 
             """ Get sky mask from semseg - not used """
             # sky_mask = get_sky_mask(megadepth_pred_backup)

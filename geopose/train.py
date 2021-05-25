@@ -22,7 +22,7 @@ from geopose.dataset import get_dataset_loaders
 from geopose.losses import rmse_loss, gradient_loss
 from geopose.util import running_mean
 
-from geopose.options.train_options import TrainOptions
+# from geopose.options.train_options import TrainOptions
 from geopose.model.hourglass_model import HourglassModel
 
 # configuration flags
@@ -143,22 +143,26 @@ if __name__ == '__main__':
         drive_outputs_path = '/content/drive/MyDrive/knn_outputs/' + training_run_id
         os.makedirs(drive_outputs_path, exist_ok=True)
         batch_size = 8
+        workers = 4
 
     elif running_on_metacentrum:
         dataset_path = '/storage/brno3-cerit/home/xmojzi08/geoPose3K_final_publish'
         outputs_dir = os.path.join('geopose', 'model_outputs', training_run_id)
         batch_size = 8
+        workers = 8
     else:
         dataset_path = 'datasets/geoPose3K_final_publish'
+        outputs_dir = os.path.join('geopose', 'model_outputs', training_run_id)
         batch_size = 2
+        workers = 4
 
     os.makedirs(outputs_dir, exist_ok=True)
 
     writer = SummaryWriter(outputs_dir)
 
     """ Dataset """
-    train_loader, val_loader, test_loader = get_dataset_loaders(dataset_path, batch_size, workers=8, fraction=1,
-                                                   validation_split=0.2)
+    train_loader, val_loader, test_loader = get_dataset_loaders(dataset_path, batch_size, workers=workers, fraction=1,
+                                                                validation_split=0.2)
 
     # setting device on GPU if available, else CPU
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -174,19 +178,16 @@ if __name__ == '__main__':
 
     """ Model """
     weights_path = 'geopose/checkpoints/best_generalization_net_G.pth'
-    with patch.object(sys, 'argv', [curr_script_path]):
-        # fix for colab interpreter arguments
-        opt = TrainOptions().parse()  # set CUDA_VISIBLE_DEVICES before import torch
-    hourglass = HourglassModel(opt, weights_path=weights_path)
+    hourglass = HourglassModel(weights_path=weights_path)  # 'generalization'
 
     """ Training """
     torch.backends.cudnn.enabled = True
     torch.backends.cudnn.benchmark = True  # better performance
     scaler = torch.cuda.amp.GradScaler()
 
-    lr = opt.lr
-    optimizer = torch.optim.Adam(hourglass.model.parameters(), lr=lr, betas=(opt.beta1, 0.999))
-    epochs = 10
+    lr = 2e-4
+    optimizer = torch.optim.Adam(hourglass.model.parameters(), lr=lr, betas=(0.5, 0.999))
+    epochs = 100
 
     epochs_trained = 0
     train_loss_history = []  # combined loss
@@ -241,7 +242,7 @@ if __name__ == '__main__':
                     # reshape fovs
                     fovs = fovs.reshape(batch_size, 1, 1)
                     # multiply batch by corresponding fov
-                    preds = preds * (1/fovs)
+                    preds = preds * (1 / fovs)
 
                     data_loss = rmse_loss(preds, depths, masks, scale_invariant=scale_invariance)
                     grad_loss = gradient_loss(preds, depths, masks)

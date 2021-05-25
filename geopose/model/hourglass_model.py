@@ -11,57 +11,33 @@ import torch.nn as nn
 from torch.autograd import Variable
 from torch.nn.parallel import DistributedDataParallel, DataParallel
 
+from geopose.model.new_model import NormieNet
+
 
 class HourglassModel:
     @staticmethod
     def name():
         return 'HourglassModel'
 
-    def __init__(self, opt, weights_path=None):
-        self.opt = opt
-        self.gpu_ids = opt.gpu_ids
-        self.isTrain = opt.isTrain
+    def __init__(self, weights_path=None):
         # self.Tensor = torch.cuda.FloatTensor if self.gpu_ids else torch.Tensor
-        self.save_dir = os.path.join(opt.checkpoints_dir, opt.name)
-
-        print("============= LOADING Hourglass NETWORK =============")
-        self.model = hg_model_new
+        # self.model = NormieNet()
+        self.model = hourglass_refactored
 
         # must use DataParallel to load weights saved with this setting
         self.model = torch.nn.parallel.DataParallel(self.model, device_ids=[0])
 
-        if weights_path is None:
-            self.load_network('G', 'best_generalization')
+        if weights_path is not None:
+            if weights_path == 'generalization':
+                weights_path = 'geopose/checkpoints/best_generalization_net_G.pth'
 
-            # self.load_network('G', 'saved')
-            # self.load_network('G', 'saved_1480.2093')
-            # self.load_network('G', 'saved_1457.3193')
-            # self.load_network('G', 'saved_1436.4768')
-            # self.load_network('G', 'saved_600batches_no-logs_lr2_by_100')
-            # self.load_network('G', 'saved_1.1111')
-        else:
             self.model.load_state_dict(torch.load(weights_path))
 
+        else:
+            # training from scratch
+            pass
+
         self.model.cuda()
-
-    def save_network(self, network_label, epoch_label):
-        save_filename = '_%s_net_%s.pth' % (epoch_label, network_label)
-        save_path = os.path.join(self.save_dir, save_filename)
-        torch.save(self.model.cpu().state_dict(), save_path)
-        if len(self.gpu_ids) and torch.cuda.is_available():
-            self.model.cuda()
-
-    def load_network(self, network_label, epoch_label):
-        save_filename = '%s_net_%s.pth' % (epoch_label, network_label)
-        save_path = self.save_dir + os.sep + save_filename
-        print('Loading model weights from:', save_path)
-        if not os.path.isfile(save_path):
-            save_path = os.path.join('geopose', 'checkpoints', save_path)
-            if not os.path.isfile(save_path):
-                print('base_model: load_network: Weights not loaded :C\ncould not find file:', save_path,
-                      file=sys.stderr)
-
-        self.model.load_state_dict(torch.load(save_path))
 
     def switch_to_train(self):
         self.model.train()
@@ -137,7 +113,7 @@ def conv1(c_in, c_out):
 
 # @formatter:off
 # noinspection DuplicatedCode
-hg_model_new = nn.Sequential(
+hourglass_refactored = nn.Sequential(
     *conv7(3, 128, bn_affine=True), nn.Sequential(
         Map(lambda x: x,  # ConcatTable,
             nn.Sequential(

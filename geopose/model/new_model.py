@@ -11,6 +11,9 @@ import torch.nn as nn
 #  code taken and slightly modified from: https://github.com/dfan/single-image-surface-normal-estimation
 # Implementation of NormieNet: nickname for my altered version of the architecture published by Chen, et al. in NIPS 2016.
 # Uses hourglass architecture
+from torch.nn import Parameter
+
+
 class NormieNet(nn.Module):
     def __init__(self):
         super(NormieNet, self).__init__()
@@ -18,7 +21,7 @@ class NormieNet(nn.Module):
         module_3 = Module3(module_4)
         module_2 = Module2(module_3)
         module_1 = Module1(module_2)
-        self.hourglass = nn.Sequential(
+        self.model = nn.Sequential(
             nn.Conv2d(in_channels=3, out_channels=128, kernel_size=7, stride=1, padding=3),  # toto odpoveda
             nn.BatchNorm2d(128),
             nn.ReLU(),
@@ -27,8 +30,18 @@ class NormieNet(nn.Module):
         )
 
     def forward(self, x):
-        out = self.hourglass(x)
+        out = self.model(x)
         return out
+
+    # def load_my_state_dict(self, state_dict):
+    #     own_state = self.state_dict()
+    #     for name, param in state_dict.items():
+    #         if name not in own_state:
+    #             continue
+    #         if isinstance(param, Parameter):
+    #             # backwards compatibility for serialized parameters
+    #             param = param.data
+    #         own_state[name].copy_(param)
 
 
 class Inception(nn.Module):

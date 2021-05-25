@@ -26,17 +26,15 @@ from utils.semseg import visualize_result
 
 
 def load_models(weights_path=None):
-    opt = EvalOptions().parse()
-
     if weights_path is None:
         # default - MegaDepth pretrained model
         weights_path = 'geopose/checkpoints/best_generalization_net_G.pth'
 
-    model = HourglassModel(opt, weights_path=weights_path)
+    hg_model = HourglassModel(weights_path=weights_path)
 
     # input_height = 384
     # input_width = 512
-    model.switch_to_eval()
+    hg_model.switch_to_eval()
 
     """ uncomment for semseg - not used """
     # Network Builders
@@ -61,15 +59,15 @@ def load_models(weights_path=None):
     # segmentation_module.eval()
     # segmentation_module.cuda()
     # return model, segmentation_module
-    return model, None
+    return hg_model, None
 
 
 if __name__ == '__main__':
     # weights_path = 'geopose/checkpoints/saved_9_1207.7374_net_G.pth'
-    weights_path = 'geopose/checkpoints/weights_199_1200.pth'
+    # weights_path = 'geopose/checkpoints/weights_199_1200.pth'
     # weights_path = 'geopose/checkpoints/weights_9_4023.pth'
     # weights_path = 'geopose/checkpoints/weights_9_2885.pth'
-    megadepth_model, semseg_model = load_models(weights_path)
+    megadepth_model, semseg_model = load_models(None)
     megadepth_model.switch_to_eval()
 
     """ Input sizes """
@@ -91,7 +89,7 @@ if __name__ == '__main__':
     # loader = torch.utils.data.DataLoader(ds, batch_size=4, num_workers=4, collate_fn=ds.collate)
     # train_loader, val_loader = dataset.get_dataset_loaders(ds_dir)
     np.random.seed(1234)
-    indices = np.random.randint(0, len(ds), 50)  # for random photos from dataset
+    indices = np.random.randint(0, len(ds), 5)  # for random photos from dataset
     with torch.no_grad():
         for i, sample in enumerate(ds[indices]):
             start = time.time()
@@ -115,10 +113,10 @@ if __name__ == '__main__':
             data_loss = rmse_loss(pred, depth, mask, scale_invariant=False)
             data_si_loss = rmse_loss(pred, depth, mask, scale_invariant=True)
             grad_loss = gradient_loss(pred, depth, mask)
-            print(f'Data loss: {data_loss.item()}'
-                  f'Data si-loss: {data_si_loss.item()}'
-                  f'Grad loss: {grad_loss.item()}')
-            print(f'{i}: {dir_path}')
+            print(f'Data loss: {data_loss.item()}\n'
+                  f'Data si-loss: {data_si_loss.item()}\n'
+                  f'Grad loss: {grad_loss.item()}\n'
+                  f'{i}: {dir_path}')
 
             megadepth_pred = np.copy(pred)
             megadepth_pred_raw = megadepth_pred.copy()
@@ -159,7 +157,6 @@ if __name__ == '__main__':
             fig.tight_layout()
 
             plt.show()
-            # fig.savefig(f'plot_comparison_{dir_path.split("/")[-1]}.pdf')
 
             """ save the plots """
             # figure_location = f'./figs/baseline/{i}.png'

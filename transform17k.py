@@ -46,8 +46,11 @@ for k, fov_dir in enumerate(fov_dirs):
     print(f'Processing folder {k} / {len(fov_dirs)}')
     info_path = os.path.join(fov_dir, 'info.txt')
     if os.path.exists(info_path):
-        corresponding_dir_path = 'lsar_' + os.path.basename(fov_dir)
-        new_info_path = os.path.join(orig_path, corresponding_dir_path, 'info.txt')
+        corresponding_dir_path_name = 'lsar_' + os.path.basename(fov_dir)
+        corr_dir_real_path = os.path.join(orig_path, corresponding_dir_path_name)
+        if not os.path.isdir(corr_dir_real_path):
+            continue
+        new_info_path = os.path.join(orig_path, corresponding_dir_path_name, 'info.txt')
         with open(info_path, 'r') as f:
             fov_info = f.read().splitlines()
         fov_info = fov_info[0].split(' ')

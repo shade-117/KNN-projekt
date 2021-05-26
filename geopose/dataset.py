@@ -54,7 +54,21 @@ class GeoPoseDataset(torch.utils.data.Dataset):
             listed_data_dir = listed_data_dir[:end]
 
         for curr_dir in listed_data_dir:
-            img_path = os.path.join(ds_dir, curr_dir, 'photo.jpeg')
+            jpeg_path = os.path.join(ds_dir, curr_dir, 'photo.jpeg')
+            png_path = os.path.join(ds_dir, curr_dir, 'photo.png')
+            jpg_path = os.path.join(ds_dir, curr_dir, 'photo.jpg')
+
+            if os.path.exists(jpeg_path):
+                img_path = jpeg_path
+
+            elif os.path.exists(png_path):
+                img_path = png_path
+
+            elif os.path.exists(jpg_path):
+                img_path = jpg_path
+            else:
+                print('There is no image in jpeg, jpg, or png in this folder: ', curr_dir)
+                exit(1)
             depth_path = os.path.join(ds_dir, curr_dir, 'distance_crop.pfm')
             # mask_path = os.path.join(ds_dir, curr_dir, 'pinhole_labels_crop.png')
             info_path = os.path.join(ds_dir, curr_dir, 'info.txt')

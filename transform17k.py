@@ -34,7 +34,8 @@ for i, image in enumerate(image_files):
     wo_extension = os.path.splitext(img_name)[0]
     extension = os.path.splitext(img_name)[1]
     corresponding_dir_path = 'lsar_' + wo_extension
-    if not os.path.isdir(corresponding_dir_path):
+    if not os.path.isdir(os.path.join(orig_path, corresponding_dir_path)):
+        # print(os.path.join(orig_path, corresponding_dir_path))
         continue
     shutil.move(image, os.path.join(orig_path, corresponding_dir_path, 'photo' + extension))
 

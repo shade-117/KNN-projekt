@@ -2,6 +2,7 @@ import math
 import os
 import shutil
 import glob
+from PIL import Image
 
 orig_path = '/storage/brno2/home/xmojzi08/storage/17k/lsar_depths'
 fovs_path = '/storage/brno2/home/xmojzi08/storage/17k/lsar_depths_metadata'
@@ -24,27 +25,45 @@ for j, curr in enumerate(all_dirs):
 
     pinhole_dir = os.path.join(curr, 'pinhole')
     shutil.rmtree(pinhole_dir)
-#
-# # move images to their folders
-image_files = glob.glob(orig_path + '/*.jpg') + glob.glob(orig_path + '/*.png')
+
+# move jpg images to their folders
+image_files = glob.glob(orig_path + '/*.jpg')
 leng_if = len(image_files)
 for i, image in enumerate(image_files):
-    print(f'Processing folder {i} / {leng_if}')
+    print(f'Processing jpgs {i} / {leng_if}')
     img_name = os.path.basename(image)
     wo_extension = os.path.splitext(img_name)[0]
     extension = os.path.splitext(img_name)[1]
     corresponding_dir_path = 'lsar_' + wo_extension
     if not os.path.isdir(os.path.join(orig_path, corresponding_dir_path)):
-        # print(os.path.join(orig_path, corresponding_dir_path))
+        print(os.path.join(orig_path, corresponding_dir_path))
         continue
     shutil.move(image, os.path.join(orig_path, corresponding_dir_path, 'photo' + extension))
+
+# move jpg images to their folders
+image_files = glob.glob(orig_path + '/*.png')
+leng_if = len(image_files)
+for i, image in enumerate(image_files):
+    print(f'Processing pngs {i} / {leng_if}')
+
+    im = Image.open(image)
+    img_name = os.path.basename(image)
+    im.convert('RGB').save(image + '.jpg', "JPEG")
+
+    wo_extension = os.path.splitext(img_name)[0]
+    corresponding_dir_path = 'lsar_' + wo_extension
+    if not os.path.isdir(os.path.join(orig_path, corresponding_dir_path)):
+        print(os.path.join(orig_path, corresponding_dir_path))
+        continue
+    shutil.move(image + '.jpg', os.path.join(orig_path, corresponding_dir_path, 'photo.jpeg'))
+    os.remove(image)
 
 # add FOV
 fov_dirs = glob.glob(fovs_path + '/*')
 for k, fov_dir in enumerate(fov_dirs):
     if not os.path.isdir(fov_dir):
         continue
-    print(f'Processing folder {k} / {len(fov_dirs)}')
+    print(f'Processing fovs {k} / {len(fov_dirs)}')
     info_path = os.path.join(fov_dir, 'info.txt')
     if os.path.exists(info_path):
         corresponding_dir_path_name = 'lsar_' + os.path.basename(fov_dir)

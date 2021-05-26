@@ -3,17 +3,19 @@ import os
 import shutil
 import glob
 
-orig_path = 'datasets/lsar_depths'
-fovs_path = 'datasets/lsar_depths_metadata'
+orig_path = '/storage/brno2/home/xmojzi08/storage/17k/lsar_depths'
+fovs_path = '/storage/brno2/home/xmojzi08/storage/17k/lsar_depths_metadata'
 
 assert os.path.isdir(orig_path), "Not a directory [orig_path]"
 depth_pfm = 'distance_crop.pfm'  # depth ground-truth
 
 # # move pfm from pinhole
-for curr in glob.glob(orig_path + '/*'):
+all_dirs = glob.glob(orig_path + '/*')
+all_dirs_len = len(all_dirs)
+for j, curr in enumerate(all_dirs):
     if not os.path.isdir(curr):
         continue
-
+    print(f'Processing folder {j} / {all_dirs_len}')
     pin_path = os.path.join(curr, 'pinhole', depth_pfm)
     if os.path.exists(pin_path):
         shutil.move(pin_path, os.path.join(curr, 'pinhole_' + depth_pfm))
@@ -25,18 +27,23 @@ for curr in glob.glob(orig_path + '/*'):
 #
 # # move images to their folders
 image_files = glob.glob(orig_path + '/*.jpg') + glob.glob(orig_path + '/*.png')
-for image in image_files:
+leng_if = len(image_files)
+for i, image in enumerate(image_files):
+    print(f'Processing folder {i} / {leng_if}')
     img_name = os.path.basename(image)
     wo_extension = os.path.splitext(img_name)[0]
     extension = os.path.splitext(img_name)[1]
     corresponding_dir_path = 'lsar_' + wo_extension
+    if not os.path.isdir(corresponding_dir_path):
+        continue
     shutil.move(image, os.path.join(orig_path, corresponding_dir_path, 'photo' + extension))
 
 # add FOV
-for fov_dir in glob.glob(fovs_path + '/*'):
+fov_dirs = glob.glob(fovs_path + '/*')
+for k, fov_dir in enumerate(fov_dirs):
     if not os.path.isdir(fov_dir):
         continue
-
+    print(f'Processing folder {k} / {len(fov_dirs)}')
     info_path = os.path.join(fov_dir, 'info.txt')
     if os.path.exists(info_path):
         corresponding_dir_path = 'lsar_' + os.path.basename(fov_dir)

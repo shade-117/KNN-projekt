@@ -18,7 +18,7 @@ for j, curr in enumerate(all_dirs):
     print(f'Processing folder {j} / {all_dirs_len}')
     pin_path = os.path.join(curr, 'pinhole', depth_pfm)
     if os.path.exists(pin_path):
-        shutil.move(pin_path, os.path.join(curr, 'pinhole_' + depth_pfm))
+        shutil.move(pin_path, os.path.join(curr, depth_pfm))
     else:
         continue
 

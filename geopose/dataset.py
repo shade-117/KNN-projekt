@@ -58,13 +58,13 @@ class GeoPoseDataset(torch.utils.data.Dataset):
             png_path = os.path.join(ds_dir, curr_dir, 'photo.png')
             jpg_path = os.path.join(ds_dir, curr_dir, 'photo.jpg')
 
-            if os.path.exists(jpeg_path):
+            if os.path.isfile(jpeg_path):
                 img_path = jpeg_path
 
-            elif os.path.exists(png_path):
+            elif os.path.isfile(png_path):
                 img_path = png_path
 
-            elif os.path.exists(jpg_path):
+            elif os.path.isfile(jpg_path):
                 img_path = jpg_path
             else:
                 print('There is no image in jpeg, jpg, or png in this folder: ', curr_dir)

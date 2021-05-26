@@ -17,6 +17,8 @@ for curr in glob.glob(orig_path + '/*'):
     pin_path = os.path.join(curr, 'pinhole', depth_pfm)
     if os.path.exists(pin_path):
         shutil.move(pin_path, os.path.join(curr, 'pinhole_' + depth_pfm))
+    else:
+        continue
 
     pinhole_dir = os.path.join(curr, 'pinhole')
     shutil.rmtree(pinhole_dir)

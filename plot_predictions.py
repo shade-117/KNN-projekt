@@ -1,43 +1,30 @@
-import sys
 import time
-import csv
 import os
 
 import matplotlib.pyplot as plt
-import scipy.io
 import numpy as np
-from skimage import io
 from skimage.transform import resize
 import torch
 import torchvision.transforms
-from torch.autograd import Variable
 from torchvision import transforms
 
-from geopose.options.eval_options import EvalOptions
-from geopose.model.hourglass_model import HourglassModel
-# from semseg.models.models import ModelBuilder, SegmentationModule # for semseg - not used
-# from semseg.utils import colorEncode # for semseg - not used
 from geopose.losses import rmse_loss, gradient_loss
 import geopose.dataset as dataset
+
+from geopose.model.builder import Hourglass
 
 from utils.process_images import get_sky_mask, transform_image_for_megadepth, megadepth_predict, \
     transform_image_for_semseg, semseg_predict, apply_sky_mask
 from utils.semseg import visualize_result
 
 
-def load_models(weights_path=None):
-    if weights_path is None:
-        # default - MegaDepth pretrained model
-        weights_path = 'geopose/checkpoints/best_generalization_net_G.pth'
-
-    hg_model = HourglassModel(weights_path=weights_path)
+def load_semseg():
+    """ uncomment for semseg - not used """
+    # Network Builders
 
     # input_height = 384
     # input_width = 512
-    hg_model.switch_to_eval()
 
-    """ uncomment for semseg - not used """
-    # Network Builders
     # todo download weights: http://sceneparsing.csail.mit.edu/model/pytorch/ade20k-resnet50dilated-ppm_deepsup/encoder_epoch_20.pth
     # todo  and http://sceneparsing.csail.mit.edu/model/pytorch/ade20k-resnet50dilated-ppm_deepsup/decoder_epoch_20.pth
     # todo and put them into semseg/checkpoints/ade20k-resnet50dilated-ppm_deepsup
@@ -59,16 +46,20 @@ def load_models(weights_path=None):
     # segmentation_module.eval()
     # segmentation_module.cuda()
     # return model, segmentation_module
-    return hg_model, None
+    return None
 
 
 if __name__ == '__main__':
-    # weights_path = 'geopose/checkpoints/saved_9_1207.7374_net_G.pth'
-    # weights_path = 'geopose/checkpoints/weights_199_1200.pth'
-    # weights_path = 'geopose/checkpoints/weights_9_4023.pth'
-    # weights_path = 'geopose/checkpoints/weights_9_2885.pth'
-    megadepth_model, semseg_model = load_models(None)
-    megadepth_model.switch_to_eval()
+    # default - MegaDepth pretrained model
+    weights_path = 'geopose/checkpoints/best_generalization_net_G.pth'  # ugly, dp
+
+    # weights_path = 'geopose/checkpoints/weights_52_3871_scratch_normie.pth'  # Petr, arch='nice'
+
+    megadepth_model = Hourglass(arch='ugly', weights=weights_path, parallel='dp')
+
+    megadepth_model.model.eval()
+
+    # semseg_model = load_semseg()
 
     """ Input sizes """
     input_height = 384
@@ -77,17 +68,10 @@ if __name__ == '__main__':
     ds_dir = 'datasets/geoPose3K_final_publish/'
     # dataset.clear_dataset_dir(ds_dir)
 
-    data_transform = transforms.Compose([transforms.ToTensor(),
-                                         # transforms.CenterCrop((384, 512)),
-                                         # transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                         #                      std=[0.229, 0.224, 0.225])  # todo fix broadcasting error
-                                         ])
+    data_transform = transforms.Compose([transforms.ToTensor(), ])
 
     ds = dataset.GeoPoseDataset(ds_dir=ds_dir, transforms=data_transform)
 
-    # lze iterovat stejně jako přes ds, jen pracuje s batches místo samples
-    # loader = torch.utils.data.DataLoader(ds, batch_size=4, num_workers=4, collate_fn=ds.collate)
-    # train_loader, val_loader = dataset.get_dataset_loaders(ds_dir)
     np.random.seed(1234)
     indices = np.random.randint(0, len(ds), 5)  # for random photos from dataset
     with torch.no_grad():
@@ -105,7 +89,7 @@ if __name__ == '__main__':
             """ Exp the output - was used by megadepth """
             # pred = torch.exp(pred)
 
-            pred = pred * 1/fov
+            pred = pred * 1 / fov
 
             depth = depth_img[None, ...]
             mask = mask_img[None, ...]

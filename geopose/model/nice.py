@@ -3,45 +3,58 @@ import sys
 
 import torch
 import torch.nn as nn
-
-
-# For NormieNet
+from torch.nn import Parameter
+from torch.nn.parallel import DistributedDataParallel, DataParallel
 
 
 #  code taken and slightly modified from: https://github.com/dfan/single-image-surface-normal-estimation
 # Implementation of NormieNet: nickname for my altered version of the architecture published by Chen, et al. in NIPS 2016.
 # Uses hourglass architecture
-from torch.nn import Parameter
 
 
-class NormieNet(nn.Module):
-    def __init__(self):
-        super(NormieNet, self).__init__()
-        module_4 = Module4()
-        module_3 = Module3(module_4)
-        module_2 = Module2(module_3)
-        module_1 = Module1(module_2)
-        self.model = nn.Sequential(
-            nn.Conv2d(in_channels=3, out_channels=128, kernel_size=7, stride=1, padding=3),  # toto odpoveda
-            nn.BatchNorm2d(128),
-            nn.ReLU(),
-            module_1,
-            nn.Conv2d(in_channels=64, out_channels=1, kernel_size=3, stride=1, padding=1)  # tu bude 1 vystupny kanal
-        )
+# class HGModel(nn.Module):
+#     def __init__(self, weights_path=None, gpus=None):
+#         super(HGModel, self).__init__()
+#         self.model = self.build_nice_model()
+#         if weights_path is not None:
+#             self.model.load_state_dict(torch.load(weights_path))
+#
+#         if gpus is None:
+#             gpus = [0]
+#
+#         self.model = torch.nn.parallel.DataParallel(self.model, device_ids=gpus)
+#
+#         self.model.cuda()
+#
+#     def forward(self, x):
+#         out = self.model(x)
+#         return out
 
-    def forward(self, x):
-        out = self.model(x)
-        return out
+def build_nice_model():
+    module_4 = Module4()
+    module_3 = Module3(module_4)
+    module_2 = Module2(module_3)
+    module_1 = Module1(module_2)
 
-    # def load_my_state_dict(self, state_dict):
-    #     own_state = self.state_dict()
-    #     for name, param in state_dict.items():
-    #         if name not in own_state:
-    #             continue
-    #         if isinstance(param, Parameter):
-    #             # backwards compatibility for serialized parameters
-    #             param = param.data
-    #         own_state[name].copy_(param)
+    model = nn.Sequential(
+        nn.Conv2d(in_channels=3, out_channels=128, kernel_size=7, stride=1, padding=3),  # toto odpoveda
+        nn.BatchNorm2d(128),
+        nn.ReLU(),
+        module_1,
+        nn.Conv2d(in_channels=64, out_channels=1, kernel_size=3, stride=1, padding=1)  # tu bude 1 vystupny kanal
+    )
+
+    return model
+
+# def load_my_state_dict(self, state_dict):
+#     own_state = self.state_dict()
+#     for name, param in state_dict.items():
+#         if name not in own_state:
+#             continue
+#         if isinstance(param, Parameter):
+#             # backwards compatibility for serialized parameters
+#             param = param.data
+#         own_state[name].copy_(param)
 
 
 class Inception(nn.Module):

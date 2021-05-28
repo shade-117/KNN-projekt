@@ -1,8 +1,6 @@
 # stdlib
 import shutil
 from datetime import datetime
-from math import floor
-from unittest.mock import patch
 import os
 import sys
 import time
@@ -12,6 +10,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
+import torch.distributed as dist
+from torch.utils.data.distributed import DistributedSampler
+
 
 # fix for local import problems - add all local directories
 sys_path_extension = [os.getcwd()]  # + [d for d in os.listdir() if os.path.isdir(d)]
@@ -22,8 +23,7 @@ from geopose.dataset import get_dataset_loaders
 from geopose.losses import rmse_loss, gradient_loss
 from geopose.util import running_mean
 
-# from geopose.options.train_options import TrainOptions
-from geopose.model.hourglass_model import HourglassModel
+from geopose.model.builder import Hourglass
 
 # configuration flags
 running_in_colab = False
@@ -107,8 +107,23 @@ def save_weights(model, epoch, epoch_mean_loss, weights_dir):
 if __name__ == '__main__':
     # globals - technically everything is global but only the following vars are treated so:
     # drive_outputs_path, batch_size, scale_invariancy, quiet, training_run_id, outputs_dir
+    from argparse import ArgumentParser
+
+    parser = ArgumentParser()
+    parser.add_argument('--local_rank', type=int, default=0, metavar='N', help='Local process rank.')
+    parser.add_argument('--ddp', action='store_true', help='Distributed training (Use train_ddp.sh).')
+    parser.add_argument('--meta', action='store_true', help='Running on MetaCentrum')
+
+    args = parser.parse_args()
+    args.is_master = args.local_rank == 0
+    args.device = torch.cuda.device(args.local_rank)
+
+    if args.ddp:
+        dist.init_process_group(backend='nccl', init_method='env://')
+    torch.cuda.set_device(args.local_rank)
+
     quiet = False
-    running_on_metacentrum = True
+    running_on_metacentrum = args.meta
 
     """
     todo:
@@ -122,7 +137,6 @@ if __name__ == '__main__':
     - vyzkoušet overfittnout malý dataset
     - vyzkoušet overfittnout se scale-invariant loss
     
-    - načítání FOV z datasetu
     - druhá hlava výstupu sítě - scaling factor
     
     """
@@ -139,7 +153,7 @@ if __name__ == '__main__':
 
     if running_in_colab:
         dataset_path = '/content/drive/MyDrive/geoPose3K_final_publish'
-        outputs_dir = os.path.join('/content', 'model_outputs', training_run_id)
+        outputs_dir = os.path.join('/content', 'outputs', training_run_id)
         drive_outputs_path = '/content/drive/MyDrive/knn_outputs/' + training_run_id
         os.makedirs(drive_outputs_path, exist_ok=True)
         batch_size = 8
@@ -147,12 +161,12 @@ if __name__ == '__main__':
 
     elif running_on_metacentrum:
         dataset_path = '/storage/brno3-cerit/home/xmojzi08/geoPose3K_final_publish'
-        outputs_dir = os.path.join('geopose', 'model_outputs', training_run_id)
+        outputs_dir = os.path.join('outputs', training_run_id)
         batch_size = 8
         workers = 8
     else:
         dataset_path = 'datasets/geoPose3K_final_publish'
-        outputs_dir = os.path.join('geopose', 'model_outputs', training_run_id)
+        outputs_dir = os.path.join('outputs', training_run_id)
         batch_size = 2
         workers = 4
 
@@ -178,7 +192,33 @@ if __name__ == '__main__':
 
     """ Model """
     weights_path = 'geopose/checkpoints/best_generalization_net_G.pth'
-    hourglass = HourglassModel(weights_path=weights_path)  # 'generalization'
+
+    """
+    Multi-GPU training:
+  
+    For DataParallel:
+    gpus=[0, 1], parallel='dp'
+    
+    For DistributedDataParallel:
+    gpus=[args.local_rank], parallel='ddp'
+    """
+
+    if args.ddp:
+        model_kwargs = {
+            'parallel': 'ddp',
+            'device': args.local_rank,
+            'gpus': [args.local_rank]
+        }
+    else:
+        model_kwargs = {
+            'parallel': 'dp',
+            'device': args.local_rank,
+            'gpus': list(range(torch.cuda.device_count()))  # adapt to number of gpus
+        }
+    # print(model_kwargs)
+
+    hourglass = Hourglass(arch='nice', weights=None,
+                          **model_kwargs)  # 'generalization'
 
     """ Training """
     torch.backends.cudnn.enabled = True
@@ -214,6 +254,9 @@ if __name__ == '__main__':
         hourglass.model.train()
         print("epoch:", epoch)
         try:
+            if args.ddp:
+                dist.barrier()
+
             for i, batch in enumerate(train_loader):
                 step_total += 1
                 # zero gradient
@@ -221,14 +264,14 @@ if __name__ == '__main__':
                     param.grad = None
 
                 with torch.cuda.amp.autocast():
-                    imgs = batch['img'].to('cuda:0')
+                    imgs = batch['img'].to(args.local_rank, non_blocking=True)
 
-                    depths = batch['depth'].cuda()
-                    masks = batch['mask'].cuda()
+                    depths = batch['depth'].to(args.local_rank, non_blocking=True)
+                    masks = batch['mask'].to(args.local_rank, non_blocking=True)
                     paths = batch['path']
-                    fovs = batch['fov'].cuda()
+                    fovs = batch['fov'].to(args.local_rank, non_blocking=True)
                     """
-                    # fov_embed.fov_id = batch['fov'].cuda()
+                    # fov_embed.fov_id = batch['fov'].to(args.local_rank)
                     # todo fov: načíst v rámci batche i field of view data a přiřadit je jako atribut custom vrstvě FOV
                     """
 
@@ -291,12 +334,12 @@ if __name__ == '__main__':
                 print('val:')
             batch_start = time.time()
             for i, batch in enumerate(val_loader):
-                imgs = batch['img'].to('cuda:0')
+                imgs = batch['img'].to(args.local_rank, non_blocking=True)
 
-                depths = batch['depth'].cuda()
-                masks = batch['mask'].cuda()
+                depths = batch['depth'].to(args.local_rank, non_blocking=True)
+                masks = batch['mask'].to(args.local_rank, non_blocking=True)
                 paths = batch['path']
-                fovs = batch['fov'].cuda()
+                fovs = batch['fov'].to(args.local_rank, non_blocking=True)
 
                 preds = hourglass.model.forward(imgs)
                 preds = preds.squeeze(dim=1)
@@ -350,10 +393,10 @@ if __name__ == '__main__':
         for i, batch in enumerate(test_loader):
             imgs = batch['img'].to('cuda:0')
 
-            depths = batch['depth'].cuda()
-            masks = batch['mask'].cuda()
+            depths = batch['depth'].to(args.local_rank, non_blocking=True)
+            masks = batch['mask'].to(args.local_rank, non_blocking=True)
             paths = batch['path']
-            fovs = batch['fov'].cuda()
+            fovs = batch['fov'].to(args.local_rank, non_blocking=True)
 
             preds = hourglass.model.forward(imgs)
             preds = preds.squeeze(dim=1)

@@ -19,6 +19,7 @@ from scipy.ndimage import rotate
 from torchvision import transforms
 from torchvision import __version__ as torchvision_version
 from turbojpeg import TurboJPEG
+from torch.utils.data.distributed import DistributedSampler
 
 # local
 from geopose.util import inpaint_nan
@@ -358,7 +359,7 @@ def rotate_images(ds_dir='datasets/geoPose3K_final_publish/', show_cv=False, sho
 
 
 def get_dataset_loaders(dataset_dir, batch_size=None, workers=4, validation_split=.2, shuffle=False, fraction=1.0,
-                        random=False):
+                        random=False, ddp=False):
     """
 
     """
@@ -379,8 +380,9 @@ def get_dataset_loaders(dataset_dir, batch_size=None, workers=4, validation_spli
         val_ds = torch.utils.data.Subset(ds, np.arange(train_len, train_len + val_len))
         test_ds = torch.utils.data.Subset(ds, np.arange(train_len + val_len, len(ds)))
 
-    train_sampler = None
-    val_sampler = None
+    train_sampler = DistributedSampler(train_ds) if ddp else None
+    val_sampler = DistributedSampler(train_ds) if ddp else None
+    test_sampler = DistributedSampler(test_ds) if ddp else None
 
     if shuffle:
         pass
@@ -391,7 +393,7 @@ def get_dataset_loaders(dataset_dir, batch_size=None, workers=4, validation_spli
     loader_kwargs = {'batch_size': batch_size, 'num_workers': workers, 'pin_memory': True, 'drop_last': True}
     train_loader = torch.utils.data.DataLoader(train_ds, sampler=train_sampler, **loader_kwargs)
     val_loader = torch.utils.data.DataLoader(val_ds, sampler=val_sampler, **loader_kwargs)
-    test_loader = torch.utils.data.DataLoader(test_ds, sampler=val_sampler, **loader_kwargs)
+    test_loader = torch.utils.data.DataLoader(test_ds, sampler=test_sampler, **loader_kwargs)
 
     if batch_size is not None:
         if len(train_loader.dataset.indices) < batch_size:

@@ -162,8 +162,8 @@ if __name__ == '__main__':
     elif running_on_metacentrum:
         dataset_path = '/storage/brno3-cerit/home/xmojzi08/geoPose3K_final_publish'
         outputs_dir = os.path.join('outputs', training_run_id)
-        batch_size = 8
-        workers = 8
+        batch_size = 16
+        workers = 32
     else:
         dataset_path = 'datasets/geoPose3K_final_publish'
         outputs_dir = os.path.join('outputs', training_run_id)

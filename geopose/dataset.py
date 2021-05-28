@@ -25,7 +25,7 @@ from torch.utils.data.distributed import DistributedSampler
 # local
 from geopose.util import inpaint_nan
 
-
+# uncomment when using the singularity image
 # imageio.plugins.freeimage.download()  # download Freelibs for reading PFM files
 
 
@@ -407,6 +407,6 @@ def get_dataset_loaders(dataset_dir, batch_size=None, workers=4, validation_spli
             raise UserWarning('Validation data subset too small', len(val_loader.dataset.indices))
 
         if len(test_loader.dataset.indices) < batch_size:
-            raise UserWarning('Test data subset too small', len(val_loader.dataset.indices))
+            raise UserWarning('Test data subset too small', len(test_loader.dataset.indices))
 
     return train_loader, val_loader, test_loader

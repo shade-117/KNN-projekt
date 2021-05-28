@@ -10,14 +10,10 @@ import numpy as np
 from skimage import io
 from skimage.transform import resize
 import torch
-import torchvision.transforms
-from torch.autograd import Variable
 from torchvision import transforms
 import seaborn as sns
 
 from geopose.model.builder import Hourglass
-# from semseg.models.models import ModelBuilder, SegmentationModule # for semseg - not used
-# from semseg.utils import colorEncode # for semseg - not used
 from geopose.losses import rmse_loss, gradient_loss
 import geopose.dataset as dataset
 

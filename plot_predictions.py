@@ -51,11 +51,12 @@ def load_semseg():
 
 if __name__ == '__main__':
     # default - MegaDepth pretrained model
-    weights_path = 'geopose/checkpoints/best_generalization_net_G.pth'  # ugly, dp
+    # weights_path = 'geopose/checkpoints/best_generalization_net_G.pth'  # ugly, dp
 
     # weights_path = 'geopose/checkpoints/weights_52_3871_scratch_normie.pth'  # Petr, arch='nice'
+    weights_path = 'geopose/checkpoints/weights_99_3377_scratch_nice.pth'  # Petr, arch='nice'
 
-    megadepth_model = Hourglass(arch='ugly', weights=weights_path, parallel='dp')
+    megadepth_model = Hourglass(arch='nice', weights=weights_path)
 
     megadepth_model.model.eval()
 
@@ -85,25 +86,21 @@ if __name__ == '__main__':
 
             img = torch.unsqueeze(input_image, dim=0)
             # prediction for single sample
-            pred = megadepth_model.model.forward(img).detach().cpu()
+            pred = megadepth_model.model.forward(img).detach().cpu()[0]
             """ Exp the output - was used by megadepth """
             # pred = torch.exp(pred)
 
             pred = pred * 1 / fov
 
-            depth = depth_img[None, ...]
-            mask = mask_img[None, ...]
-
-            data_loss = rmse_loss(pred, depth, mask, scale_invariant=False)
-            data_si_loss = rmse_loss(pred, depth, mask, scale_invariant=True)
-            grad_loss = gradient_loss(pred, depth, mask)
+            data_loss = rmse_loss(pred, depth_img, mask_img, scale_invariant=False)
+            data_si_loss = rmse_loss(pred, depth_img, mask_img, scale_invariant=True)
+            grad_loss = gradient_loss(pred, depth_img, mask_img)
             print(f'Data loss: {data_loss.item()}\n'
                   f'Data si-loss: {data_si_loss.item()}\n'
                   f'Grad loss: {grad_loss.item()}\n'
                   f'{i}: {dir_path}')
 
-            megadepth_pred = np.copy(pred)
-            megadepth_pred_raw = megadepth_pred.copy()
+            depth_img = depth_img[0]
 
             """ Segment image using semseg - not used """
             # img_for_semseg, _ = transform_image_for_semseg(input_image, input_height, input_width)
@@ -111,8 +108,11 @@ if __name__ == '__main__':
 
             """ Get sky mask from ground truth """
             sky_mask = depth_img == -1
-            idx = (sky_mask == True)
-            megadepth_pred[0, idx] = -1
+            pred_masked = np.copy(pred)
+            pred_masked[0, sky_mask] = -1
+
+            """ Get diff GT - pred """
+            diff = pred - depth_img.numpy()
 
             """ Get sky mask from semseg - not used """
             # sky_mask = get_sky_mask(megadepth_pred_backup)
@@ -121,24 +121,54 @@ if __name__ == '__main__':
             # applies it in place
             # apply_sky_mask(megadepth_pred.squeeze(), sky_mask)
 
-            """ Get diff GT - pred """
-            diff = megadepth_pred_raw.squeeze() - depth_img[0].numpy()
+            # get maximum value ranges for accurate color mapping
+            gt_low, gt_high = depth_img.min(), depth_img.max()
+            pred_low, pred_high = pred.min(), pred.max()
+            vmin, vmax = min(gt_low, pred_low), max(gt_high, pred_high)
 
-            """ show 4 subplots: original image, GT, depth map, depth map no sky """
-            fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(nrows=2, ncols=2)
-
-            ax1.imshow(sample['img'].permute(1, 2, 0).numpy())
+            """ show 4 subplots: original image, GT, prediction/GT difference, prediction """
+            fig = plt.figure()  # constrained_layout=True
+            widths = [1, 1, 0.05]
+            gs = fig.add_gridspec(2, 3, width_ratios=widths)
+            ax1 = fig.add_subplot(gs[0, 0])
             ax1.set_title('Input Image')
-            ax2.imshow(depth_img[0])
+            ax1.imshow(sample['img'].permute(1, 2, 0).numpy())  # CHW to WHC
+
+            ax2 = fig.add_subplot(gs[0, 1])
+            colorbar_ax = ax2.imshow(depth_img, vmin=vmin, vmax=vmax)
             ax2.set_title('Depth GT')
-            ax3.imshow(diff, cmap=plt.get_cmap('RdBu'))
+
+            ax3 = fig.add_subplot(gs[1, 0])
+            ax3.imshow(diff[0], cmap=plt.get_cmap('RdBu'))
             ax3.set_title('Prediction/GT Difference')
-            ax4.imshow(megadepth_pred_raw.squeeze())
+            # GT subtracted from Prediction
+            # => red == predicted more, blue == predicted less
+
+
+            ax4 = fig.add_subplot(gs[1, 1])
+            ax4.imshow(pred[0], vmin=vmin, vmax=vmax)
             ax4.set_title('Depth Prediction')
 
-            for ax in fig.axes:
+            ax5 = fig.add_subplot(gs[:, 2])
+            fig.colorbar(colorbar_ax, cax=ax5, orientation='vertical')
+            fig.tight_layout(pad=0.5)
+
+            for ax in fig.axes[:-1]:
+                # axis labels kept only for last axis (colormap)
                 ax.axis('off')
-            fig.tight_layout()
+
+            diff[0, sky_mask] = 0  # don't calculate mean and max diff from sky
+            # ^ also, don't move this before plotting the diff
+
+            # maximum absolute difference (sign is kept)
+            diff_abs_max = diff.min() if np.abs(diff.min()) > np.abs(diff.max()) else diff.max()
+
+
+            fig.text(0.038, 0.015,
+                      f'abs-mean: {np.abs(diff).mean():0.2g}, max: {diff_abs_max:0.2g}',
+                     color='black')
+
+            fig.tight_layout(pad=0.7)
 
             plt.show()
 

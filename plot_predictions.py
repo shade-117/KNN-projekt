@@ -51,7 +51,7 @@ def load_semseg():
 
 if __name__ == '__main__':
     # default - MegaDepth pretrained model
-    # weights_path = 'geopose/checkpoints/best_generalization_net_G.pth'  # ugly, dp
+    weights_path = 'geopose/checkpoints/best_generalization_net_G.pth'  # ugly, dp
 
     # weights_path = 'geopose/checkpoints/weights_52_3871_scratch_normie.pth'  # Petr, arch='nice'
     weights_path = 'geopose/checkpoints/weights_99_3377_scratch_nice.pth'  # Petr, arch='nice'
@@ -121,10 +121,24 @@ if __name__ == '__main__':
             # applies it in place
             # apply_sky_mask(megadepth_pred.squeeze(), sky_mask)
 
-            # get maximum value ranges for accurate color mapping
-            gt_low, gt_high = depth_img.min(), depth_img.max()
-            pred_low, pred_high = pred.min(), pred.max()
-            vmin, vmax = min(gt_low, pred_low), max(gt_high, pred_high)
+            """ 
+            Plot prediction 
+                a) scale-invariant
+                    (use for generalization weights)
+                b) non-si
+                    (use for trained model evaluation)
+                    Note: this makes the colorbar range apply to the GT image only
+            """
+            plot_pred_si = False
+
+            if plot_pred_si:
+                value_range_args = {}
+            else:
+                # get value ranges for accurate color mapping
+                pred_low, pred_high = pred.min(), pred.max()
+                gt_low, gt_high = depth_img.min(), depth_img.max()
+                vmin, vmax = min(gt_low, pred_low), max(gt_high, pred_high)
+                value_range_args = {'vmin': vmin, 'vmax': vmax}
 
             """ show 4 subplots: original image, GT, prediction/GT difference, prediction """
             fig = plt.figure()  # constrained_layout=True
@@ -135,7 +149,7 @@ if __name__ == '__main__':
             ax1.imshow(sample['img'].permute(1, 2, 0).numpy())  # CHW to WHC
 
             ax2 = fig.add_subplot(gs[0, 1])
-            colorbar_ax = ax2.imshow(depth_img, vmin=vmin, vmax=vmax)
+            colorbar_ax = ax2.imshow(depth_img, **value_range_args)
             ax2.set_title('Depth GT')
 
             ax3 = fig.add_subplot(gs[1, 0])
@@ -144,9 +158,8 @@ if __name__ == '__main__':
             # GT subtracted from Prediction
             # => red == predicted more, blue == predicted less
 
-
             ax4 = fig.add_subplot(gs[1, 1])
-            ax4.imshow(pred[0], vmin=vmin, vmax=vmax)
+            ax4.imshow(pred[0], **value_range_args)
             ax4.set_title('Depth Prediction')
 
             ax5 = fig.add_subplot(gs[:, 2])
@@ -163,9 +176,8 @@ if __name__ == '__main__':
             # maximum absolute difference (sign is kept)
             diff_abs_max = diff.min() if np.abs(diff.min()) > np.abs(diff.max()) else diff.max()
 
-
             fig.text(0.038, 0.015,
-                      f'abs-mean: {np.abs(diff).mean():0.2g}, max: {diff_abs_max:0.2g}',
+                     f'abs-mean: {np.abs(diff).mean():0.2g}, max: {diff_abs_max:0.2g}',
                      color='black')
 
             fig.tight_layout(pad=0.7)

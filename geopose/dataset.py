@@ -8,6 +8,7 @@ import os
 # external
 from math import ceil
 
+import cv2
 import numpy as np
 import torch
 import imageio  # read PFM
@@ -18,7 +19,7 @@ from torch.utils.data import SubsetRandomSampler
 from scipy.ndimage import rotate
 from torchvision import transforms
 from torchvision import __version__ as torchvision_version
-from turbojpeg import TurboJPEG
+# from turbojpeg import TurboJPEG
 from torch.utils.data.distributed import DistributedSampler
 
 # local
@@ -42,7 +43,7 @@ class GeoPoseDataset(torch.utils.data.Dataset):
         # self.mask_paths = []
         self.info_paths = []
         self.transforms = transforms
-        self.jpeg_reader = TurboJPEG()
+        # self.jpeg_reader = TurboJPEG()
 
         self.target_size = 384, 512
 
@@ -131,8 +132,11 @@ class GeoPoseDataset(torch.utils.data.Dataset):
             print('NaN x{} in {}'.format(np.sum(nans), self.depth_paths[idx]))
 
         # input image
-        with open(self.img_paths[idx], 'rb') as photo_jpeg:
-            base_img = self.jpeg_reader.decode(photo_jpeg.read(), 0)  # 0 == RGB
+        # with open(self.img_paths[idx], 'rb') as photo_jpeg:
+        #     base_img = self.jpeg_reader.decode(photo_jpeg.read(), 0)  # 0 == RGB
+        base_img = cv2.imread(self.img_paths[idx])  # reads an image in the BGR format
+        base_img = cv2.cvtColor(base_img, cv2.COLOR_BGR2RGB)
+
         base_img = np.array(base_img, dtype=np.float32) / 255
 
         # image segmentation (ground-truth)

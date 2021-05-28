@@ -26,6 +26,8 @@ class Hourglass(nn.Module):
         if gpus is None:
             gpus = [0]  # idea: test if gpu available?
 
+        self.model = self.model.to(device)
+
         if parallel == 'dp':
             # use to load generalization weights
             self.model = torch.nn.parallel.DataParallel(self.model, device_ids=gpus)
@@ -41,7 +43,6 @@ class Hourglass(nn.Module):
             except RuntimeError as err:
                 print('Failed to load weights\n', err, file=sys.stderr)
 
-        self.model = self.model.to(device)
 
     def switch_to_train(self):
         self.model.train()

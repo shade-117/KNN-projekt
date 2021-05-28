@@ -176,7 +176,7 @@ if __name__ == '__main__':
 
     """ Dataset """
     train_loader, val_loader, test_loader = get_dataset_loaders(dataset_path, batch_size, workers=workers, fraction=1,
-                                                                validation_split=0.2)
+                                                                validation_split=0.2, ddp=args.ddp)
 
     # setting device on GPU if available, else CPU
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

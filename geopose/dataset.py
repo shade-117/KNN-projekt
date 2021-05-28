@@ -385,7 +385,7 @@ def get_dataset_loaders(dataset_dir, batch_size=None, workers=4, validation_spli
         test_ds = torch.utils.data.Subset(ds, np.arange(train_len + val_len, len(ds)))
 
     train_sampler = DistributedSampler(train_ds) if ddp else None
-    val_sampler = DistributedSampler(train_ds) if ddp else None
+    val_sampler = DistributedSampler(val_ds) if ddp else None
     test_sampler = DistributedSampler(test_ds) if ddp else None
 
     if shuffle:

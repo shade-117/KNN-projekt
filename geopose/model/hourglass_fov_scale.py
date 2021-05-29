@@ -7,11 +7,12 @@ import torch
 import torch.nn as nn
 
 from geopose.model.hourglass import Interpolate, Inception
+from geopose.model.hourglass_fov import Fovception
 
 
-class HourglassFovCenter(nn.Module):
+class HourglassFovCenterScale(nn.Module):
     def __init__(self):
-        super(HourglassFovCenter, self).__init__()
+        super(HourglassFovCenterScale, self).__init__()
         module_4 = FovModule4()
         module_3 = FovModule3(module_4)
         module_2 = FovModule2(module_3)
@@ -27,9 +28,10 @@ class HourglassFovCenter(nn.Module):
 
     def forward(self, img, fov):
         first_out = self.first(img)
-        inner_out = self.inner(first_out, fov)
+        inner_out, inner_scaling = self.inner(first_out, fov)
         last_out = self.last(inner_out)
-        return last_out
+
+        return last_out * inner_scaling[..., None, None], inner_scaling
 
 
 class FovModule1(nn.Module):
@@ -57,12 +59,12 @@ class FovModule1(nn.Module):
 
     def forward(self, img, fov):
         first_out = self.first(img)
-        inner_out = self.inner(first_out, fov)
+        inner_out, inner_scaling = self.inner(first_out, fov)
         output1 = self.last(inner_out)
 
         output2 = self.residual(img)
         # print('1', output1.shape, output2.shape)
-        return output1 + output2
+        return output1 + output2, inner_scaling
 
 
 class FovModule2(nn.Module):
@@ -95,12 +97,12 @@ class FovModule2(nn.Module):
 
     def forward(self, img, fov):
         first_out = self.first(img)
-        inner_out = self.inner(first_out, fov)
+        inner_out, inner_scaling = self.inner(first_out, fov)
         output1 = self.last(inner_out)
 
         output2 = self.residual(img)
 
-        return output1 + output2
+        return output1 + output2, inner_scaling
 
 
 class FovModule3(nn.Module):
@@ -131,12 +133,12 @@ class FovModule3(nn.Module):
 
     def forward(self, img, fov):
         first_out = self.first(img)
-        inner_out = self.inner(first_out, fov)
+        inner_out, inner_scaling = self.inner(first_out, fov)
         output1 = self.last(inner_out)
 
         output2 = self.residual(img)
 
-        return output1 + output2
+        return output1 + output2, inner_scaling
 
 
 class FovModule4(nn.Module):
@@ -152,61 +154,43 @@ class FovModule4(nn.Module):
             # vsetky zelene E
             Inception(256, 64, [(3, 32, 64), (5, 32, 64), (7, 32, 64)]),
         )
+        self.inner = Fovception(256, 32, [(3, 32, 64), (5, 32, 64), (7, 32, 64)])  # smaller 1x1 conv, FOV concatenated
+
         self.last = nn.Sequential(
             Inception(256, 64, [(3, 32, 64), (5, 32, 64), (7, 32, 64)]),
             Interpolate(scale_factor=2, mode='nearest')  # Up to 8x, 256 channel
         )
 
-        self.inner = Fovception(256, 32, [(3, 32, 64), (5, 32, 64), (7, 32, 64)])  # smaller 1x1 conv, FOV concatenated
+        layers = []
+
+        for i in range(0, 4):
+            channels_out = 128 // 2 ** i
+            layers.append(nn.AvgPool2d(kernel_size=2, stride=2))
+            layers.append(nn.Conv2d(in_channels=2 * channels_out, out_channels=channels_out,
+                                    kernel_size=1))
+            # kernel_size=3, padding=1, padding_mode='reflect'
+            layers.append(nn.BatchNorm2d(channels_out))
+            layers.append(nn.ReLU())
+
+        self.scale = nn.Sequential(
+            *layers,
+            nn.Flatten(),
+            nn.Linear(in_features=192, out_features=1)
+        )
 
     def forward(self, img, fov):
-
         first_out = self.first(img)
         inner_out = self.inner(first_out, fov)
         output1 = self.last(inner_out)
 
         output2 = self.residual(img)
 
-        return output1 + output2
+        out = output1 + output2
+        scaling = self.scale(out)
+
+        return out, scaling
 
 
-class Fovception(nn.Module):
-    """Inception layer with FOV concatenation"""
-    def __init__(self, input_size, output_size, conv_params):
-        super(Fovception, self).__init__()
-        # Base 1 x 1 conv layer
-        self.layer1 = nn.Sequential(
-            nn.Conv2d(in_channels=input_size, out_channels=output_size, kernel_size=1, stride=1),
-            nn.BatchNorm2d(output_size),
-            nn.ReLU()
-        )
-        # Additional layer
-        self.hidden = nn.ModuleList()
-        for i in range(len(conv_params)):
-            filt_size = conv_params[i][0]
-            pad_size = int((filt_size - 1) / 2)
-            out_a = conv_params[i][1]
-            out_b = conv_params[i][2]
-            curr_layer = nn.Sequential(
-                # Reduction
-                nn.Conv2d(in_channels=input_size, out_channels=out_a, kernel_size=1, stride=1),
-                nn.BatchNorm2d(out_a),
-                nn.ReLU(),
-                # Spatial convolution
-                nn.Conv2d(in_channels=out_a, out_channels=out_b, kernel_size=filt_size, stride=1, padding=pad_size),
-                nn.BatchNorm2d(out_b),
-                nn.ReLU()
-            )
-            self.hidden.append(curr_layer)
+def asdf():
+    t = torch.zeros((2, 256, 48, 64))
 
-    def forward(self, img, fov):
-        output1 = self.layer1(img)
-        outputs = [output1]
-        for i in range(len(self.hidden)):
-            outputs.append(self.hidden[i](img))
-
-        fov_layers = torch.zeros_like(output1) + 1 / fov[:, None, None, None]  # FOV tensor
-        fov_layers = fov_layers.to(dtype=torch.half)
-        outputs.append(fov_layers)
-
-        return torch.cat(outputs, dim=1)

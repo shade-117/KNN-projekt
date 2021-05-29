@@ -103,15 +103,15 @@ def save_weights(model, epoch, epoch_mean_loss, weights_dir):
 
 
 def predict(batch, device=0):
-
     imgs = batch['img'].to(device=device, dtype=torch.float16, non_blocking=True)
     depths = batch['depth'].to(device=device, non_blocking=True)
     masks = batch['mask'].to(device=device, non_blocking=True)
     # paths = batch['path']
     fovs = batch['fov'].to(device=device, non_blocking=True)
 
-    preds = hourglass.model.forward(imgs, fovs)
+    preds, scaling = hourglass.model.forward(imgs, fovs)
 
+    print(scaling.item())
     preds = preds.squeeze(dim=1)
     depths = depths.squeeze(dim=1)
     masks = masks.squeeze(dim=1)
@@ -235,7 +235,7 @@ if __name__ == '__main__':
             'gpus': list(range(torch.cuda.device_count()))  # adapt to number of gpus
         }
 
-    hourglass = Hourglass(arch='fov', weights=None,
+    hourglass = Hourglass(arch='fov_scale', weights=None,
                           **model_kwargs)  # 'generalization'
 
     """ Training """

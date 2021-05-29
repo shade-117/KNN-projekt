@@ -10,6 +10,7 @@ from torch.autograd import Variable
 from torch.nn.parallel import DistributedDataParallel, DataParallel
 
 # local
+from geopose.model.hourglass_fov_scale import HourglassFovCenterScale
 from geopose.model.hourglass_fov_early import HourglassFovEarly
 from geopose.model.hourglass_fov import HourglassFovCenter
 from geopose.model.hourglass import HourglassBase
@@ -25,6 +26,8 @@ class Hourglass(nn.Module):
             self.model = HourglassFovCenter()
         elif arch == 'fov_early':
             self.model = HourglassFovEarly(device)
+        elif arch == 'fov_scale':
+            self.model = HourglassFovCenterScale()
         else:  # elif arch == 'nice':  # takhle zaroven i jako else-blok
             self.model = HourglassBase()
 

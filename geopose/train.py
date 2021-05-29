@@ -399,5 +399,4 @@ if __name__ == '__main__':
     epochs_trained += epochs
 
     writer.add_hparams({'lr': lr, 'epochs': epochs_trained},
-                       {'hparam/loss': epoch_mean_loss},
-                       {'si': scale_invariance})
+                       {'hparam/loss': epoch_mean_loss})

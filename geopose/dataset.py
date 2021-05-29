@@ -128,6 +128,9 @@ class GeoPoseDataset(torch.utils.data.Dataset):
             # replace NaN by local mean
             depth_img[ind_nan[0], ind_nan[1]] = inpaint_nan(depth_img, ind_nan[0], ind_nan[1], radius=2)
 
+        # in case some nans are still left
+        depth_img[np.isnan(depth_img)] = np.nanmean(depth_img)
+
         if self.verbose and np.sum(nans) > 0:
             print('NaN x{} in {}'.format(np.sum(nans), self.depth_paths[idx]))
 

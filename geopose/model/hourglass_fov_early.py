@@ -26,8 +26,8 @@ class HourglassFovEarly(nn.Module):
         self.device = device
 
     def forward(self, img, fov):
-        fov_layer = torch.zeros((384, 512), device=self.device) + 1 / fov[:, None, None, None]  # FOV tensor
-        fov_layer = fov_layer.to(dtype=torch.half, device=self.device)
+        fov_layer = torch.zeros_like(img[:, 0:1, :, :]) + 1 / fov[:, None, None, None]  # FOV tensor
+        fov_layer = fov_layer.to(dtype=torch.half)
         img = torch.cat([img, fov_layer], dim=1)
 
         out = self.layer(img)

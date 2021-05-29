@@ -272,9 +272,6 @@ if __name__ == '__main__':
         hourglass.model.train()
         print("epoch:", epoch)
         try:
-            if args.ddp:
-                dist.barrier()
-
             for i, batch in enumerate(train_loader):
                 step_total += 1
                 # zero gradient
@@ -314,11 +311,11 @@ if __name__ == '__main__':
             stop_training = True
             # stops after evaluating on validation set
 
-        epoch_mean_loss = np.mean(epoch_train_loss_history)
+        epoch_mean_loss = np.nanmean(epoch_train_loss_history)
         writer.add_scalars('epoch_loss', {'train': epoch_mean_loss}, epoch)
         writer.add_scalars('epoch_train_losses', {'joint': epoch_mean_loss,
-                                                  'data': np.mean(epoch_train_data_loss_history),
-                                                  'gradient': np.mean(epoch_train_grad_loss_history), }, epoch)
+                                                  'data': np.nanmean(epoch_train_data_loss_history),
+                                                  'gradient': np.nanmean(epoch_train_grad_loss_history), }, epoch)
 
         """Save weights and loss plot"""
         # if epoch % 20 == 19:
@@ -350,11 +347,11 @@ if __name__ == '__main__':
                 epoch_val_loss_grad_history.append(grad_loss.item())
                 batch_start = time.time()
 
-        writer.add_scalars('epoch_loss', {'val': np.mean(epoch_val_loss_history)}, epoch)
-        writer.add_scalars('epoch_val_losses', {'joint': np.mean(epoch_val_loss_history),
-                                                'data': np.mean(epoch_val_loss_data_history),
-                                                'data_si': np.mean(epoch_val_loss_data_si_history),
-                                                'gradient': np.mean(epoch_val_loss_grad_history), }, epoch)
+        writer.add_scalars('epoch_loss', {'val': np.nanmean(epoch_val_loss_history)}, epoch)
+        writer.add_scalars('epoch_val_losses', {'joint': np.nanmean(epoch_val_loss_history),
+                                                'data': np.nanmean(epoch_val_loss_data_history),
+                                                'data_si': np.nanmean(epoch_val_loss_data_si_history),
+                                                'gradient': np.nanmean(epoch_val_loss_grad_history), }, epoch)
 
         if stop_training:
             break

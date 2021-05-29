@@ -10,18 +10,21 @@ from torch.autograd import Variable
 from torch.nn.parallel import DistributedDataParallel, DataParallel
 
 # local
-from geopose.model.hourglass_fov import FovHourglass
+from geopose.model.hourglass_fov_early import HourglassFovEarly
+from geopose.model.hourglass_fov import HourglassFovCenter
 from geopose.model.hourglass import build_nice_model
 from geopose.model.hourglass_ugly import build_ugly_model
 
 
 class Hourglass(nn.Module):
-    def __init__(self, arch='ugly', weights=None, gpus=None, parallel='dp', device='cuda:0'):
+    def __init__(self, arch='fov', weights=None, gpus=None, parallel='dp', device='cuda:0'):
         super().__init__()
         if arch == 'ugly':
             self.model = build_ugly_model()
         elif arch == 'fov':
-            self.model = FovHourglass()
+            self.model = HourglassFovCenter()
+        elif arch == 'fov_early':
+            self.model = HourglassFovEarly(device)
         else:  # elif arch == 'nice':  # takhle zaroven i jako else-blok
             self.model = build_nice_model()
 

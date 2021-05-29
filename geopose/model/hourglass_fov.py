@@ -9,9 +9,9 @@ import torch.nn as nn
 from geopose.model.hourglass import Interpolate
 
 
-class FovHourglass(nn.Module):
+class HourglassFovCenter(nn.Module):
     def __init__(self):
-        super(FovHourglass, self).__init__()
+        super(HourglassFovCenter, self).__init__()
         module_4 = FovModule4()
         module_3 = FovModule3(module_4)
         module_2 = FovModule2(module_3)
@@ -247,10 +247,5 @@ class Fovception(nn.Module):
         fov_layers = torch.zeros_like(output1) + 1 / fov[:, None, None, None]  # FOV tensor
         fov_layers = fov_layers.to(dtype=torch.half)
         outputs.append(fov_layers)
-
-        # print('f:', end='')
-        # for o in outputs:
-        #     print(o.shape, end=',')
-        # print('')
 
         return torch.cat(outputs, dim=1)

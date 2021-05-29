@@ -1,34 +1,14 @@
+# stdlib
 import os
 import sys
 
+# external
 import torch
 import torch.nn as nn
-from torch.nn import Parameter
-from torch.nn.parallel import DistributedDataParallel, DataParallel
 
 
-#  code taken and slightly modified from: https://github.com/dfan/single-image-surface-normal-estimation
-# Implementation of NormieNet: nickname for my altered version of the architecture published by Chen, et al. in NIPS 2016.
-# Uses hourglass architecture
+# code modified from: https://github.com/dfan/single-image-surface-normal-estimation
 
-
-# class HGModel(nn.Module):
-#     def __init__(self, weights_path=None, gpus=None):
-#         super(HGModel, self).__init__()
-#         self.model = self.build_nice_model()
-#         if weights_path is not None:
-#             self.model.load_state_dict(torch.load(weights_path))
-#
-#         if gpus is None:
-#             gpus = [0]
-#
-#         self.model = torch.nn.parallel.DataParallel(self.model, device_ids=gpus)
-#
-#         self.model.cuda()
-#
-#     def forward(self, x):
-#         out = self.model(x)
-#         return out
 
 def build_nice_model():
     module_4 = Module4()
@@ -45,16 +25,6 @@ def build_nice_model():
     )
 
     return model
-
-# def load_my_state_dict(self, state_dict):
-#     own_state = self.state_dict()
-#     for name, param in state_dict.items():
-#         if name not in own_state:
-#             continue
-#         if isinstance(param, Parameter):
-#             # backwards compatibility for serialized parameters
-#             param = param.data
-#         own_state[name].copy_(param)
 
 
 class Inception(nn.Module):
@@ -90,7 +60,7 @@ class Inception(nn.Module):
         outputs = [output1]
         for i in range(len(self.hidden)):
             outputs.append(self.hidden[i](x))
-        return torch.cat(outputs, 1)
+        return torch.cat(outputs, dim=1)
 
 
 class Interpolate(nn.Module):

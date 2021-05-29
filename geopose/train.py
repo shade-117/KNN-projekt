@@ -11,8 +11,6 @@ import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 import torch.distributed as dist
-from torch.utils.data.distributed import DistributedSampler
-
 
 # fix for local import problems - add all local directories
 sys_path_extension = [os.getcwd()]  # + [d for d in os.listdir() if os.path.isdir(d)]
@@ -102,6 +100,27 @@ def save_weights(model, epoch, epoch_mean_loss, weights_dir):
         shutil.copy(weights_path, drive_weights_path)
         if not quiet:
             print('saved weights to drive at:', drive_weights_path)
+
+
+def predict(batch, device=0):
+
+    imgs = batch['img'].to(device, non_blocking=True)
+    depths = batch['depth'].to(device, non_blocking=True)
+    masks = batch['mask'].to(device, non_blocking=True)
+    paths = batch['path']
+    fovs = batch['fov'].to(device, non_blocking=True)
+
+    preds = hourglass.model.forward(imgs, fovs)
+
+    preds = preds.squeeze(dim=1)
+    depths = depths.squeeze(dim=1)
+    masks = masks.squeeze(dim=1)
+
+    data_loss = rmse_loss(preds, depths, masks, scale_invariant=False)
+    data_si_loss = rmse_loss(preds, depths, masks, scale_invariant=True)
+    grad_loss = gradient_loss(preds, depths, masks)
+
+    return data_loss, data_si_loss, grad_loss
 
 
 if __name__ == '__main__':
@@ -217,7 +236,7 @@ if __name__ == '__main__':
         }
     # print(model_kwargs)
 
-    hourglass = Hourglass(arch='nice', weights=None,
+    hourglass = Hourglass(arch='fov', weights=None,
                           **model_kwargs)  # 'generalization'
 
     """ Training """
@@ -264,31 +283,11 @@ if __name__ == '__main__':
                     param.grad = None
 
                 with torch.cuda.amp.autocast():
-                    imgs = batch['img'].to(args.local_rank, non_blocking=True)
+                    data_loss, data_si_loss, grad_loss = predict(batch, args.local_rank)
 
-                    depths = batch['depth'].to(args.local_rank, non_blocking=True)
-                    masks = batch['mask'].to(args.local_rank, non_blocking=True)
-                    paths = batch['path']
-                    fovs = batch['fov'].to(args.local_rank, non_blocking=True)
-                    """
-                    # fov_embed.fov_id = batch['fov'].to(args.local_rank)
-                    # todo fov: načíst v rámci batche i field of view data a přiřadit je jako atribut custom vrstvě FOV
-                    """
+                    if scale_invariance:
+                        data_loss = data_si_loss
 
-                    # make prediction
-                    preds = hourglass.model.forward(imgs)
-
-                    preds = preds.squeeze(dim=1)
-                    depths = depths.squeeze(dim=1)
-                    masks = masks.squeeze(dim=1)
-
-                    # reshape fovs
-                    fovs = fovs.reshape(batch_size, 1, 1)
-                    # multiply batch by corresponding fov
-                    preds = preds * (1 / fovs)
-
-                    data_loss = rmse_loss(preds, depths, masks, scale_invariant=scale_invariance)
-                    grad_loss = gradient_loss(preds, depths, masks)
                     batch_loss = (data_loss + 0.5 * grad_loss)
 
                 scaler.scale(batch_loss).backward()
@@ -334,27 +333,9 @@ if __name__ == '__main__':
                 print('val:')
             batch_start = time.time()
             for i, batch in enumerate(val_loader):
-                imgs = batch['img'].to(args.local_rank, non_blocking=True)
-
-                depths = batch['depth'].to(args.local_rank, non_blocking=True)
-                masks = batch['mask'].to(args.local_rank, non_blocking=True)
-                paths = batch['path']
-                fovs = batch['fov'].to(args.local_rank, non_blocking=True)
-
-                preds = hourglass.model.forward(imgs)
-                preds = preds.squeeze(dim=1)
-                depths = depths.squeeze(dim=1)
-                masks = masks.squeeze(dim=1)
-
-                # reshape fovs
-                fovs = fovs.reshape(batch_size, 1, 1)
-                # multiply batch by corresponding fov
-                preds = preds * (1 / fovs)
-
-                data_loss = rmse_loss(preds, depths, masks, scale_invariant=False)
-                data_si_loss = rmse_loss(preds, depths, masks, scale_invariant=True)
-                grad_loss = gradient_loss(preds, depths, masks)
-                batch_loss = (data_loss + 0.5 * grad_loss)
+                with torch.cuda.amp.autocast():
+                    data_loss, data_si_loss, grad_loss = predict(batch, args.local_rank)
+                    batch_loss = (data_loss + 0.5 * grad_loss)
 
                 if not quiet:
                     print("\t{:>4}/{} : d={:<9.0f} g={:<9.0f} t={:.2f}s "
@@ -391,31 +372,18 @@ if __name__ == '__main__':
         if not quiet:
             print('test:')
         for i, batch in enumerate(test_loader):
-            imgs = batch['img'].to('cuda:0')
+            with torch.cuda.amp.autocast():
+                data_loss, data_si_loss, grad_loss = predict(batch, args.local_rank)
 
-            depths = batch['depth'].to(args.local_rank, non_blocking=True)
-            masks = batch['mask'].to(args.local_rank, non_blocking=True)
-            paths = batch['path']
-            fovs = batch['fov'].to(args.local_rank, non_blocking=True)
+                if scale_invariance:
+                    data_loss = data_si_loss
 
-            preds = hourglass.model.forward(imgs)
-            preds = preds.squeeze(dim=1)
-            depths = depths.squeeze(dim=1)
-            masks = masks.squeeze(dim=1)
-
-            # reshape fovs
-            fovs = fovs.reshape(batch_size, 1, 1)
-            # multiply batch by corresponding fov
-            preds = preds * (1 / fovs)
-
-            data_loss = rmse_loss(preds, depths, masks, scale_invariant=False)
-            data_si_loss = rmse_loss(preds, depths, masks, scale_invariant=True)
-            grad_loss = gradient_loss(preds, depths, masks)
-            batch_loss = (data_loss + 0.5 * grad_loss)
+                batch_loss = (data_loss + 0.5 * grad_loss)
 
             test_loss_history.append(batch_loss.item())
             test_data_loss_history.append(data_loss.item())
             test_grad_loss_history.append(grad_loss.item())
+
 
             if not quiet:
                 print("\t{:>4}/{} : d={:<9.0f} g={:<9.0f}"
@@ -434,4 +402,5 @@ if __name__ == '__main__':
     epochs_trained += epochs
 
     writer.add_hparams({'lr': lr, 'epochs': epochs_trained},
-                       {'hparam/loss': epoch_mean_loss})
+                       {'hparam/loss': epoch_mean_loss},
+                       {'si': scale_invariance})

@@ -12,7 +12,7 @@ from torch.nn.parallel import DistributedDataParallel, DataParallel
 # local
 from geopose.model.hourglass_fov_early import HourglassFovEarly
 from geopose.model.hourglass_fov import HourglassFovCenter
-from geopose.model.hourglass import build_nice_model
+from geopose.model.hourglass import HourglassBase
 from geopose.model.hourglass_ugly import build_ugly_model
 
 
@@ -26,7 +26,7 @@ class Hourglass(nn.Module):
         elif arch == 'fov_early':
             self.model = HourglassFovEarly(device)
         else:  # elif arch == 'nice':  # takhle zaroven i jako else-blok
-            self.model = build_nice_model()
+            self.model = HourglassBase()
 
 
         if gpus is None:

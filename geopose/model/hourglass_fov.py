@@ -99,7 +99,6 @@ class FovModule2(nn.Module):
         output1 = self.last(inner_out)
 
         output2 = self.residual(img)
-        # print('2', output1.shape, output2.shape)
 
         return output1 + output2
 
@@ -136,7 +135,6 @@ class FovModule3(nn.Module):
         output1 = self.last(inner_out)
 
         output2 = self.residual(img)
-        # print('3', output1.shape, output2.shape)
 
         return output1 + output2
 
@@ -168,7 +166,6 @@ class FovModule4(nn.Module):
         output1 = self.last(inner_out)
 
         output2 = self.residual(img)
-        # print('4', output1.shape, output2.shape)
 
         return output1 + output2
 

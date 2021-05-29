@@ -10,6 +10,27 @@ import torch.nn as nn
 # code modified from: https://github.com/dfan/single-image-surface-normal-estimation
 
 
+class HourglassBase(nn.Module):
+    def __init__(self):
+        super(HourglassBase, self).__init__()
+        module_4 = Module4()
+        module_3 = Module3(module_4)
+        module_2 = Module2(module_3)
+        module_1 = Module1(module_2)
+
+        self.model = nn.Sequential(
+            nn.Conv2d(in_channels=3, out_channels=128, kernel_size=7, stride=1, padding=3),  # toto odpoveda
+            nn.BatchNorm2d(128),
+            nn.ReLU(),
+            module_1,
+            nn.Conv2d(in_channels=64, out_channels=1, kernel_size=3, stride=1, padding=1)  # tu bude 1 vystupny kanal
+        )
+
+    def forward(self, x, _=None):
+        out = self.model(x)
+        return out
+
+
 def build_nice_model():
     module_4 = Module4()
     module_3 = Module3(module_4)
@@ -55,7 +76,7 @@ class Inception(nn.Module):
             )
             self.hidden.append(curr_layer)
 
-    def forward(self, x):
+    def forward(self, x, _=None):
         output1 = self.layer1(x)
         outputs = [output1]
         for i in range(len(self.hidden)):
@@ -71,7 +92,7 @@ class Interpolate(nn.Module):
         self.mode = mode
         self.align_corners = align_corners
 
-    def forward(self, x):
+    def forward(self, x, _=None):
         x = nn.functional.interpolate(x, size=self.size, scale_factor=self.scale_factor, mode=self.mode,
                                       align_corners=self.align_corners)
         return x
@@ -97,7 +118,7 @@ class Module1(nn.Module):
             Inception(128, 16, [(3, 64, 16), (7, 64, 16), (11, 64, 16)])  # ruzove A v nakrese
         )
 
-    def forward(self, x):
+    def forward(self, x, _=None):
         output1 = self.layer1(x)
         output2 = self.layer2(x)
         return output1 + output2
@@ -128,7 +149,7 @@ class Module2(nn.Module):
             Inception(128, 32, [(3, 64, 32), (7, 64, 32), (11, 64, 32)])
         )
 
-    def forward(self, x):
+    def forward(self, x, _=None):
         output1 = self.layer1(x)
         output2 = self.layer2(x)
         return output1 + output2
@@ -159,7 +180,7 @@ class Module3(nn.Module):
             Interpolate(scale_factor=2, mode='nearest')  # up to 4x. 256 channel
         )
 
-    def forward(self, x):
+    def forward(self, x, _=None):
         output1 = self.layer1(x)
         output2 = self.layer2(x)
         return output1 + output2
@@ -182,7 +203,7 @@ class Module4(nn.Module):
             Interpolate(scale_factor=2, mode='nearest')  # Up to 8x, 256 channel
         )
 
-    def forward(self, x):
+    def forward(self, x, _=None):
         output1 = self.layer1(x)
         output2 = self.layer2(x)
         return output1 + output2

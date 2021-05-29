@@ -104,11 +104,11 @@ def save_weights(model, epoch, epoch_mean_loss, weights_dir):
 
 def predict(batch, device=0):
 
-    imgs = batch['img'].to(device, non_blocking=True)
-    depths = batch['depth'].to(device, non_blocking=True)
-    masks = batch['mask'].to(device, non_blocking=True)
-    paths = batch['path']
-    fovs = batch['fov'].to(device, non_blocking=True)
+    imgs = batch['img'].to(device=device, dtype=torch.float16, non_blocking=True)
+    depths = batch['depth'].to(device=device, non_blocking=True)
+    masks = batch['mask'].to(device=device, non_blocking=True)
+    # paths = batch['path']
+    fovs = batch['fov'].to(device=device, non_blocking=True)
 
     preds = hourglass.model.forward(imgs, fovs)
 
@@ -245,7 +245,7 @@ if __name__ == '__main__':
 
     lr = 2e-4
     optimizer = torch.optim.Adam(hourglass.model.parameters(), lr=lr, betas=(0.5, 0.999))
-    epochs = 100
+    epochs = 50
 
     epochs_trained = 0
     train_loss_history = []  # combined loss

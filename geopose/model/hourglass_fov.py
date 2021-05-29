@@ -6,7 +6,7 @@ import sys
 import torch
 import torch.nn as nn
 
-from geopose.model.nice import Interpolate
+from geopose.model.hourglass import Interpolate
 
 
 class FovHourglass(nn.Module):

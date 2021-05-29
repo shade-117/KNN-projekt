@@ -234,7 +234,6 @@ if __name__ == '__main__':
             'device': args.local_rank,
             'gpus': list(range(torch.cuda.device_count()))  # adapt to number of gpus
         }
-    # print(model_kwargs)
 
     hourglass = Hourglass(arch='fov', weights=None,
                           **model_kwargs)  # 'generalization'
@@ -356,8 +355,6 @@ if __name__ == '__main__':
                                                 'data': np.mean(epoch_val_loss_data_history),
                                                 'data_si': np.mean(epoch_val_loss_data_si_history),
                                                 'gradient': np.mean(epoch_val_loss_grad_history), }, epoch)
-
-        # plot_val_losses(val_loss_data_history, val_loss_data_si_history, val_loss_grad_history)
 
         if stop_training:
             break

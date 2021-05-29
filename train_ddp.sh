@@ -2,7 +2,7 @@
 
 #  https://gist.github.com/sgraaf/5b0caa3a320f28c27c12b5efeb35aa4c
 
-# this example uses a single node (`NUM_NODES=1`) w/ 4 GPUs (`NUM_GPUS_PER_NODE=4`)
+# Made to run on Metacentrum on a 2-GPU node.
 export NUM_NODES=1
 export NUM_GPUS_PER_NODE=2
 export NODE_RANK=0

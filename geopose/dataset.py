@@ -26,7 +26,7 @@ from torch.utils.data.distributed import DistributedSampler
 from geopose.util import inpaint_nan
 
 # uncomment when using the singularity image
-# imageio.plugins.freeimage.download()  # download Freelibs for reading PFM files
+imageio.plugins.freeimage.download()  # download Freelibs for reading PFM files
 
 
 class GeoPoseDataset(torch.utils.data.Dataset):

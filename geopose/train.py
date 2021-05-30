@@ -111,7 +111,7 @@ def predict(batch, device=0):
 
     preds, scaling = hourglass.model.forward(imgs, fovs)
 
-    print(scaling.item())
+    # print(scaling.item())
     preds = preds.squeeze(dim=1)
     depths = depths.squeeze(dim=1)
     masks = masks.squeeze(dim=1)
@@ -144,21 +144,6 @@ if __name__ == '__main__':
     quiet = False
     running_on_metacentrum = args.meta
 
-    """
-    todo:
-
-    - augmentace:
-        - left-right flip
-        - random crop 384x512
-        - rotate 10 degrees
-        - 
-    
-    - vyzkoušet overfittnout malý dataset
-    - vyzkoušet overfittnout se scale-invariant loss
-    
-    - druhá hlava výstupu sítě - scaling factor
-    
-    """
     try:
         from IPython import get_ipython
 
@@ -212,16 +197,6 @@ if __name__ == '__main__':
     """ Model """
     weights_path = 'geopose/checkpoints/best_generalization_net_G.pth'
 
-    """
-    Multi-GPU training:
-  
-    For DataParallel:
-    gpus=[0, 1], parallel='dp'
-    
-    For DistributedDataParallel:
-    gpus=[args.local_rank], parallel='ddp'
-    """
-
     if args.ddp:
         model_kwargs = {
             'parallel': 'ddp',
@@ -244,7 +219,7 @@ if __name__ == '__main__':
     scaler = torch.cuda.amp.GradScaler()
 
     lr = 2e-4
-    optimizer = torch.optim.Adam(hourglass.model.parameters(), lr=lr, betas=(0.5, 0.999))
+    optimizer = torch.optim.Adam(hourglass.model.parameters(), lr=lr)
     epochs = 50
 
     epochs_trained = 0
@@ -304,7 +279,6 @@ if __name__ == '__main__':
                     print("\t{:>4}/{} : d={:<9.0f} g={:<9.0f} t={:.2f}s/sample "
                           .format(i + 1, len(train_loader), batch_loss.item(), grad_loss.item(),
                                   (time.time() - epoch_start) / ((i + 1) * batch_size)))
-
 
         except KeyboardInterrupt:
             print('stopped training')

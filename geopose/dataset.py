@@ -134,24 +134,13 @@ class GeoPoseDataset(torch.utils.data.Dataset):
         if self.verbose and np.sum(nans) > 0:
             print('NaN x{} in {}'.format(np.sum(nans), self.depth_paths[idx]))
 
-        # input image
-        # with open(self.img_paths[idx], 'rb') as photo_jpeg:
-        #     base_img = self.jpeg_reader.decode(photo_jpeg.read(), 0)  # 0 == RGB
         base_img = cv2.imread(self.img_paths[idx])  # reads an image in the BGR format
         base_img = cv2.cvtColor(base_img, cv2.COLOR_BGR2RGB)
 
         base_img = np.array(base_img, dtype=np.float32) / 255
 
-        # image segmentation (ground-truth)
-        # mask_img = imageio.imread(self.mask_paths[idx], format='png')  # (WxHxC)
-        # mask_img = mask_img[:, :, :3].sum(axis=2)  # ignore alpha channel, merge channels
-
-        # todo do resizing in torchvision.transforms
         base_img = resize(base_img, self.target_size)
         depth_img = resize(depth_img, self.target_size)
-        # mask_img = resize(mask_img, self.target_size)
-
-        # mask_sky = mask_img != 0
         mask_sky = depth_img != -1
 
         if self.transforms is not None:

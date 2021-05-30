@@ -13,10 +13,6 @@ import geopose.dataset as dataset
 
 from geopose.model.builder import Hourglass
 
-from utils.process_images import get_sky_mask, transform_image_for_megadepth, megadepth_predict, \
-    transform_image_for_semseg, semseg_predict, apply_sky_mask
-from utils.semseg import visualize_result
-
 
 def load_semseg():
     """ uncomment for semseg - not used """
@@ -25,9 +21,9 @@ def load_semseg():
     # input_height = 384
     # input_width = 512
 
-    # todo download weights: http://sceneparsing.csail.mit.edu/model/pytorch/ade20k-resnet50dilated-ppm_deepsup/encoder_epoch_20.pth
-    # todo  and http://sceneparsing.csail.mit.edu/model/pytorch/ade20k-resnet50dilated-ppm_deepsup/decoder_epoch_20.pth
-    # todo and put them into semseg/checkpoints/ade20k-resnet50dilated-ppm_deepsup
+    # download weights: http://sceneparsing.csail.mit.edu/model/pytorch/ade20k-resnet50dilated-ppm_deepsup/encoder_epoch_20.pth
+    # download http://sceneparsing.csail.mit.edu/model/pytorch/ade20k-resnet50dilated-ppm_deepsup/decoder_epoch_20.pth
+    # put them into semseg/checkpoints/ade20k-resnet50dilated-ppm_deepsup
     # semseg_checkpoints_path = './semseg/checkpoints/ade20k-resnet50dilated-ppm_deepsup'
     #
     # net_encoder = ModelBuilder.build_encoder(

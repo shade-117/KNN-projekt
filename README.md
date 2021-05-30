@@ -13,10 +13,11 @@
 Some parts of this project are taken from other repositories:
 * `semseg/` - this directory is taken from <https://github.com/CSAILVision/semantic-segmentation-pytorch>
                and it's not used in our implementation, we only used it at the beginning
-* `geopose/model/houglass_model.py` - contains the original model from <https://github.com/zhengqili/MegaDepth>,
+* `geopose/model/houglass_ugly.py` - contains the original model from <https://github.com/zhengqili/MegaDepth>,
                                       we rewrote it because it was pretty ugly
-* `geopose/model/new_model.py` - contains the same model, but implemented in pytorch from scratch,
+* `geopose/model/hourglass.py` - contains the same model, but implemented in pytorch from scratch,
                                  inspired by <https://github.com/dfan/single-image-surface-normal-estimation>
+* `geopose/model/hourglass_*.py` - contains derived models from base HG with added FOV
 * `geopose/train.py` - Working with DistributedDataParallel <https://gist.github.com/sgraaf/5b0caa3a320f28c27c12b5efeb35aa4c>  
 
 Other files are scripts implemented by us. Main scripts are:

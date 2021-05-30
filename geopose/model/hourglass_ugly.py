@@ -37,20 +37,6 @@ class Reduce(LambdaBase):
         return reduce(self.lambda_func, self.forward_prepare(input_))
 
 
-"""
-# todo fov
-class FOV(nn.Module):
-    def __init__(self, channels_in):
-        super(FOV, self).__init__()
-        pass
-
-    def forward(self, x):
-        # přičíst embedding fov ke vstupu
-        pass
-
-"""
-
-
 def bn(c, affine=False):
     return nn.BatchNorm2d(c, 1e-05, 0.1, affine)
 

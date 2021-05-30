@@ -1,2 +1,0 @@
-whole dataset si-RMSE loss: 1.3036
-whole dataset    RMSE loss: 6.0680

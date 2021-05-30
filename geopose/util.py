@@ -76,8 +76,6 @@ def inpaint_nan_numpy(k, image, row, col):
     """
     Demo: https://colab.research.google.com/drive/1TVjaB7kJMN-jmhrryJOZ7Lggp6Xri1l0?usp=sharing
 
-    todo make it work on a connected component (blob) instead of a single nan pixel
-
     :param row: target nan pixel row
     :param col: target nan pixel column
     :param k: local area size --> filter_size = 1 + 2 * radius

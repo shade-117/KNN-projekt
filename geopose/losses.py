@@ -6,7 +6,7 @@ def rmse_loss(pred, gt, mask=None, scale_invariant=True):
     if mask is None:
         mask = torch.zeros(pred.shape) + 1
 
-    n = mask.sum(dim=2).sum(dim=1) + np.finfo(float).eps
+    n = mask.sum(dim=2).sum(dim=1) + 1
 
     diff = pred - gt
     diff = torch.mul(diff, mask)
@@ -37,7 +37,7 @@ def gradient_loss(pred, gt, mask=None):
     # https://github.com/ArnaudFickinger/MegaDepth-Training/blob/master/data/image_folder.py#L268
 
     def gradient_loss_inner(p, g, mask):
-        n = mask.sum(dim=2).sum(dim=1) + np.finfo(float).eps
+        n = mask.sum(dim=2).sum(dim=1) + 1
         diff = p - g
         diff = torch.mul(diff, mask)
 

@@ -13,10 +13,6 @@ import geopose.dataset as dataset
 
 from geopose.model.builder import Hourglass
 
-from utils.process_images import get_sky_mask, transform_image_for_megadepth, megadepth_predict, \
-    transform_image_for_semseg, semseg_predict, apply_sky_mask
-from utils.semseg import visualize_result
-
 
 def load_semseg():
     """ uncomment for semseg - not used """
@@ -25,9 +21,9 @@ def load_semseg():
     # input_height = 384
     # input_width = 512
 
-    # todo download weights: http://sceneparsing.csail.mit.edu/model/pytorch/ade20k-resnet50dilated-ppm_deepsup/encoder_epoch_20.pth
-    # todo  and http://sceneparsing.csail.mit.edu/model/pytorch/ade20k-resnet50dilated-ppm_deepsup/decoder_epoch_20.pth
-    # todo and put them into semseg/checkpoints/ade20k-resnet50dilated-ppm_deepsup
+    # download weights: http://sceneparsing.csail.mit.edu/model/pytorch/ade20k-resnet50dilated-ppm_deepsup/encoder_epoch_20.pth
+    # download http://sceneparsing.csail.mit.edu/model/pytorch/ade20k-resnet50dilated-ppm_deepsup/decoder_epoch_20.pth
+    # put them into semseg/checkpoints/ade20k-resnet50dilated-ppm_deepsup
     # semseg_checkpoints_path = './semseg/checkpoints/ade20k-resnet50dilated-ppm_deepsup'
     #
     # net_encoder = ModelBuilder.build_encoder(
@@ -51,10 +47,10 @@ def load_semseg():
 
 if __name__ == '__main__':
     # default - MegaDepth pretrained model
-    weights_path = 'geopose/checkpoints/best_generalization_net_G.pth'  # ugly, dp
-
+    # weights_path = 'geopose/checkpoints/best_generalization_net_G.pth'  # ugly, dp
+    weights_path = 'geopose/checkpoints/weights_40_3549-base-plat.pth'
     # weights_path = 'geopose/checkpoints/weights_52_3871_scratch_normie.pth'  # Petr, arch='nice'
-    weights_path = 'geopose/checkpoints/weights_99_3377_scratch_nice.pth'  # Petr, arch='nice'
+    # weights_path = 'geopose/checkpoints/weights_99_3377_scratch_nice.pth'  # Petr, arch='nice'
 
     megadepth_model = Hourglass(arch='nice', weights=weights_path)
 
@@ -82,15 +78,16 @@ if __name__ == '__main__':
             mask_img = sample['mask']
             depth_img = sample['depth']
             dir_path = sample['path']
-            fov = float(sample['fov'])
+            fov = torch.zeros((1,)) + sample['fov']
 
             img = torch.unsqueeze(input_image, dim=0)
             # prediction for single sample
-            pred = megadepth_model.model.forward(img).detach().cpu()[0]
+            pred = megadepth_model.model.forward(img, fov)
+            pred = pred.detach().cpu()[0]
             """ Exp the output - was used by megadepth """
             # pred = torch.exp(pred)
 
-            pred = pred * 1 / fov
+            #pred = pred * 1 / fov
 
             data_loss = rmse_loss(pred, depth_img, mask_img, scale_invariant=False)
             data_si_loss = rmse_loss(pred, depth_img, mask_img, scale_invariant=True)
@@ -129,7 +126,7 @@ if __name__ == '__main__':
                     (use for trained model evaluation)
                     Note: this makes the colorbar range apply to the GT image only
             """
-            plot_pred_si = False
+            plot_pred_si = True
 
             if plot_pred_si:
                 value_range_args = {}
@@ -142,8 +139,8 @@ if __name__ == '__main__':
 
             """ show 4 subplots: original image, GT, prediction/GT difference, prediction """
             fig = plt.figure()  # constrained_layout=True
-            widths = [1, 1, 0.05]
-            gs = fig.add_gridspec(2, 3, width_ratios=widths)
+            widths = [1, 1]
+            gs = fig.add_gridspec(2, 2, width_ratios=widths)
             ax1 = fig.add_subplot(gs[0, 0])
             ax1.set_title('Input Image')
             ax1.imshow(sample['img'].permute(1, 2, 0).numpy())  # CHW to WHC
@@ -162,11 +159,11 @@ if __name__ == '__main__':
             ax4.imshow(pred[0], **value_range_args)
             ax4.set_title('Depth Prediction')
 
-            ax5 = fig.add_subplot(gs[:, 2])
-            fig.colorbar(colorbar_ax, cax=ax5, orientation='vertical')
+            # ax5 = fig.add_subplot(gs[:, 2])
+            # fig.colorbar(colorbar_ax, cax=ax5, orientation='vertical')
             fig.tight_layout(pad=0.5)
 
-            for ax in fig.axes[:-1]:
+            for ax in fig.axes:
                 # axis labels kept only for last axis (colormap)
                 ax.axis('off')
 
@@ -183,23 +180,3 @@ if __name__ == '__main__':
             fig.tight_layout(pad=0.7)
 
             plt.show()
-
-            """ save the plots """
-            # figure_location = f'./figs/baseline/{i}.png'
-            # os.makedirs(os.path.dirname(figure_location), exist_ok=True)
-            # fig.savefig(figure_location, dpi=110)
-            # if i == 50:
-            #     break
-
-            """ Save predictions as numpy array """
-            # print(dir_path)
-            # np.save(dir_path + '/depth_map', megadepth_pred_raw)
-            # # megadepth_pred is with masked sky
-            # np.save(dir_path + '/depth_map_no_sky', megadepth_pred)
-            # end = time.time()
-            # took = end - start
-            # # print(dir_path)
-            # print(f'{i}/{len(ds)}, last one took: {took:.3f}s', sep=' ', end='\r', flush=True)
-            # sys.stdout.flush()
-            # if i == 10:
-            #     break
